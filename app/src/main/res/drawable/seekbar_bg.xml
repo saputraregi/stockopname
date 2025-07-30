@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background Track -->
+    <item android:id="@android:id/background">
+        <shape android:shape="line"> <!-- Atau rectangle dengan corner radius -->
+            <stroke android:width="6dp" android:color="#4DFFFFFF" /> <!-- Warna track abu-abu transparan -->
+            <!-- Jika rectangle: -->
+            <!-- <solid android:color="#4DFFFFFF" /> -->
+            <!-- <corners android:radius="3dp" /> -->
+        </shape>
+    </item>
+
+    <!-- Secondary Progress (jika digunakan) -->
+    <item android:id="@android:id/secondaryProgress">
+        <clip>
+            <shape android:shape="line">
+                <stroke android:width="6dp" android:color="#800077FF" /> <!-- Warna sekunder transparan -->
+            </shape>
+        </clip>
+    </item>
+
+    <!-- Main Progress -->
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="line">
+                <stroke android:width="6dp" android:color="?attr/colorPrimaryVariant" /> <!-- Warna progress utama aplikasi -->
+            </shape>
+        </clip>
+    </item>
+</layer-list>

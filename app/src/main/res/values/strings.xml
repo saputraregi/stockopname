@@ -1,0 +1,304 @@
+<resources>
+    <string name="app_name">Aplikasi Stock Opname Perpus</string>
+    <string name="action_go">Go</string>
+    <string name="baking_title">Baking with Gemini</string>
+    <string name="label_prompt">Prompt</string>
+    <string name="prompt_placeholder">Provide a recipe for the baked goods in the image</string>
+    <string name="image1_description">Cupcake</string>
+    <string name="image2_description">Cookies</string>
+    <string name="image3_description">Cake</string>
+    <string name="results_placeholder">(Results will appear here)</string>
+    <string name="title_activity_uhf_init">Inisialisasi UHF</string>
+    <string name="title_activity_stock_opname">Stock Opname</string>
+    <string name="title_activity_import_export">Import/Export</string>
+    <string name="title_activity_report">Report Opname</string>
+    <string name="import_data">Import Data</string>
+    <string-array name="filter_status_options">
+        <item>Semua</item>
+        <item>Ditemukan</item>
+        <item>Belum Ditemukan</item>
+    </string-array>
+        <string name="export_notification_title_starting">Ekspor Data</string>
+        <string name="export_notification_message_starting">Memulai proses ekspor...</string>
+        <string name="export_notification_title_failed">Ekspor Gagal</string>
+        <string name="export_error_unsupported_format">Format file tidak didukung: %s</string>
+        <string name="export_error_creating_public_file">Gagal membuat file ekspor di penyimpanan
+            publik.
+        </string>
+    <string name="export_error_opening_stream">Gagal membuka stream untuk menulis file.</string>
+    <string name="export_notification_title_progress">Ekspor Data</string>
+    <string name="export_notification_message_collecting_data">Mengumpulkan data...</string>
+    <string name="export_error_invalid_opname_id">ID Laporan Opname tidak valid untuk ekspor.</string>
+    <string name="export_error_unknown_type">Tipe ekspor tidak dikenal: %s</string>
+    <string name="export_success_message">Ekspor berhasil: %d item diekspor.</string>
+    <string name="export_success_path_saf">File disimpan sesuai pilihan Anda.</string>
+    <string name="export_success_path_public">Disimpan di: %s</string>
+    <string name="export_notification_title_success">Ekspor Selesai</string>
+    <string name="export_no_data">Tidak ada data untuk diekspor.</string>
+    <string name="export_notification_title_complete">Ekspor Selesai</string>
+    <string name="export_error_unexpected">Kesalahan tak terduga: %s</string>
+    <string name="waiting_for_scan">Menunggu scan...</string>
+    <string name="error_prefix">Error: %s</string> <!-- %s akan digantikan oleh pesan error -->
+    <string name="start_opname_session">Silakan mulai sesi opname.</string>
+    <string name="uhf_stop_scan">Berhenti Scan</string>
+    <string name="uhf_start_scan">Mulai Scan</string>
+    <string name="stop_scan_before_saving">Hentikan scan terlebih dahulu sebelum menyimpan.</string>
+    <string name="stop_scan_before_action">Hentikan scan terlebih dahulu sebelum import.</string>
+    <string name="wait_for_loading_to_finish">Harap tunggu proses loading selesai.</string>
+    <string name="save_opname_results_title">Simpan Hasil Stock Opname?</string>
+    <string name="save_confirmation_message_prefix">Apakah Anda yakin ingin menyimpan hasil opname saat ini dengan nama "%1$s"?</string>
+    <string name="opname_data_will_be_recorded">Data yang sudah ada akan dicatat.</string>
+    <string name="scan_status_will_be_reset">Status scan akan direset untuk sesi baru.</string>
+    <string name="save_and_export_txt">Simpan &amp; Export TXT</string>
+    <string name="save_and_export_results">Simpan Data Stock Opname</string>
+    <string name="opname_saved_report_id">Hasil opname disimpan. Report ID: %1$d.</string> <!-- %1$d untuk integer -->
+    <string name="data_exported_to">Data ditemukan juga diekspor ke: %s</string>
+    <string name="no_data_to_export_or_failed">Tidak ada data ditemukan untuk diexport atau export
+        gagal.
+    </string>
+    <string name="failed_to_save_opname_session">Gagal menyimpan sesi opname.</string>
+    <string name="save_only">Simpan Saja</string>
+    <string name="cancel">Batal</string>
+    <string-array name="lock_types_array">
+        <item>Buka (Unlock)</item>
+        <item>Kunci Sementara (PermaUnlock)</item>
+        <item>Kunci Permanen (Lock)</item>
+        <item>Kunci Memori EPC</item>
+        <item>Kunci Memori TID</item>
+        <item>Kunci Memori User</item>
+        <item>Kunci Password Akses</item>
+        <item>Kunci Password Kill</item>
+        <!-- Tambahkan tipe kunci lain yang didukung SDK Chainway -->
+    </string-array>
+    <string name="title_activity_read_write_tag">Baca/Tulis Tag RFID</string>
+    <string name="tab_title_read">Baca Tag</string>
+    <string name="tab_title_write">Tulis Tag</string>
+    <string name="read_instruction">Dekatkan tag RFID ke reader untuk membaca EPC.</string>
+    <string name="read_mode_single">Baca Tunggal</string>
+    <string name="read_mode_continuous">Baca Kontinu</string>
+    <string name="start_read">Mulai Baca</string>
+    <string name="stop_read">Stop Baca</string>
+    <string name="last_epc_label">EPC Terakhir Dibaca:</string>
+    <string name="list_of_epcs_label">Daftar EPC Ditemukan (Kontinu):</string>
+    <string name="write_instruction">Letakkan satu tag yang akan ditulis di atas reader.</string>
+    <string name="current_epc_hex_hint">EPC Tag Saat Ini (HEX)</string>
+    <string name="read_target_tag_button">Baca Tag Target</string>
+    <string name="new_epc_hex_hint">EPC Baru (HEX)</string>
+    <string name="new_epc_hex_helper">Contoh: E2...ABCD (Genap, maks 24 hex / 12 byte)</string>
+    <string name="ascii_preview_label">Preview ASCII (jika valid):</string>
+    <string name="write_new_epc_button">Tulis EPC Baru</string>
+    <string name="lock_section_label">Penguncian Tag (Operasi Kritis!)</string>
+    <string name="lock_warning_text">PERHATIAN: Mengunci tag mungkin bersifat permanen atau memerlukan password untuk membuka. Pastikan Anda mengerti konsekuensinya.</string>
+    <string name="lock_tag_button">Kunci Tag (dengan EPC saat ini)</string>
+    <string name="select_lock_type_prompt">Pilih Tipe Kunci...</string>
+    <string name="access_password_hint">Password Akses (HEX, 8 char)</string>
+    <string name="clear_list">Bersihkan</string>
+    <string name="access_password_helper">Dibutuhkan untuk beberapa operasi kunci/buka kunci</string>
+    <string name="error_invalid_hex_format_multiple_of_4">HEX tidak valid (0-9, A-F, kelipatan 4)</string>
+    <string name="error_invalid_password_format_8_hex">Password 8 char HEX (0-9, A-F)</string>
+    <string name="no_tag_found_placeholder">Tidak ada tag</string>
+    <string name="operation_successful">Operasi berhasil</string>
+    <string name="operation_failed">Operasi gagal</string>
+    <string name="lock_operation_successful">Operasi kunci berhasil</string>
+    <string name="lock_operation_failed">Operasi kunci gagal</string>
+    <string name="invalid_hex_for_ascii_preview">(HEX tidak valid untuk preview)</string>
+    <string name="ascii_conversion_error">(Error konversi ASCII)</string>
+    <string name="tab_description_prefix">Tab:</string>
+    <string name="title_activity_setup">Reader Setup</string>
+        <!-- String yang sudah Anda miliki -->
+        <string name="label_power">Output Power:</string>
+        <string name="hint_select_power">Select Power (dBm)</string>
+        <string name="button_get">Get</string>
+        <string name="button_set">Set</string>
+        <string name="button_factory_reset">Factory Reset</string>
+        <string name="label_frequency_region">Frequency Region:</string>
+        <string name="content_desc_select_power">Select output power in dBm</string>
+        <string-array name="power_options_dbm">
+            <item>5</item> <!-- Hanya angka untuk kemudahan parsing di ViewModel -->
+            <item>10</item>
+            <item>15</item>
+            <item>20</item>
+            <item>25</item>
+            <item>30</item>
+        </string-array>
+        <string-array name="frequency_regions">
+            <item>FCC (US)</item>
+            <item>ETSI (EU)</item>
+            <item>China 840-845MHz</item>
+            <item>China 920-925MHz</item>
+            <item>Korea</item>
+            <item>Brazil</item>
+            <item>Australia</item>
+            <!-- Tambahkan region lainnya sesuai kebutuhan SDK -->
+        </string-array>
+
+        <!-- String BARU untuk Parameter Tambahan -->
+
+        <!-- Frequency Hopping -->
+        <string name="label_freq_hopping">Frequency Hopping:</string>
+        <string name="radio_button_freq_hopping_us">US Type</string>
+        <string name="radio_button_freq_hopping_others">Others</string>
+        <string name="hint_select_freq_hopping_table">Select Hopping Table</string>
+        <string name="button_set_freq_hopping">Set Frequency Hopping</string>
+        <!-- Tambahkan string-array untuk freq_hopping_tables jika opsinya tetap -->
+        <string-array name="freq_hopping_tables">
+            <item>Table 1</item>
+            <item>Table 2</item>
+            <item>Custom (Not Implemented)</item>
+        </string-array>
+
+
+        <!-- Protocol -->
+        <string name="label_protocol">Protocol:</string>
+        <string name="hint_select_protocol">Select Protocol</string>
+        <!-- Tambahkan string-array untuk protocols -->
+        <string-array name="protocols">
+            <item>GEN2</item>
+            <item>ISO18000-6B</item>
+            <item>IPX</item>
+            <!-- Tambahkan protokol lain yang didukung -->
+        </string-array>
+
+        <!-- RFLink Profile -->
+        <string name="label_rflink_profile">RFLink Profile:</string>
+        <string name="hint_select_rflink_profile">Select RFLink Profile</string>
+        <!-- Tambahkan string-array untuk rflink_profiles -->
+        <string-array name="rflink_profiles">
+            <item>Profile 0 (High Throughput)</item>
+            <item>Profile 1 (Dense Reader)</item>
+            <item>Profile 2 (Resistant)</item>
+            <!-- Tambahkan profil lain yang didukung -->
+        </string-array>
+
+        <!-- Memory Bank (Inventory) -->
+        <string name="label_memory_bank">Memory Bank (Inventory):</string>
+        <string name="hint_select_memory_bank">Select Memory Bank</string>
+        <string name="hint_memory_bank_offset">Offset (Words)</string>
+        <string name="hint_memory_bank_length">Length (Words)</string>
+        <!-- Tambahkan string-array untuk memory_banks -->
+        <string-array name="memory_banks">
+            <item>RESERVED</item>
+            <item>EPC</item>
+            <item>TID</item>
+            <item>USER</item>
+        </string-array>
+
+        <!-- Session Gen2 -->
+        <string name="label_session_gen2">Gen2 Session:</string>
+        <string name="hint_select_session_id">Session ID (S0-S3)</string>
+        <string name="hint_select_inventoried_flag">Target (A/B)</string>
+        <!-- Tambahkan string-array untuk session_ids dan inventoried_flags -->
+        <string-array name="session_ids">
+            <item>S0</item>
+            <item>S1</item>
+            <item>S2</item>
+            <item>S3</item>
+        </string-array>
+        <string-array name="inventoried_flags">
+            <item>TARGET A</item>
+            <item>TARGET B</item>
+        </string-array>
+
+        <!-- Fast Inventory -->
+        <string name="label_fast_inventory">Fast Inventory:</string>
+        <string name="radio_button_fast_inventory_open">Open</string>
+        <string name="radio_button_fast_inventory_close">Close</string>
+        <!-- Untuk Switch: <string name="switch_fast_inventory">Enable Fast Inventory</string> -->
+
+        <!-- Additional Settings (Switches) -->
+        <string name="label_additional_settings">Additional Settings:</string>
+        <string name="switch_tag_focus">Enable TagFocus</string>
+        <string name="switch_fast_id">Enable FastID</string>
+
+        <!-- Messages & Dialogs -->
+        <string name="toast_select_valid_power">Please select a valid power value.</string>
+        <string name="toast_select_region">Please select a region.</string>
+        <string name="toast_select_hopping_type_table">Please select hopping type and table.</string>
+        <string name="toast_select_protocol">Please select a protocol.</string>
+        <string name="toast_select_rflink_profile">Please select an RFLink profile.</string>
+        <string name="toast_select_memory_bank">Please select a Memory Bank.</string>
+        <string name="toast_select_session_target">Please select Session ID and Target.</string>
+        <string name="dialog_title_factory_reset">Factory Reset</string>
+        <string name="dialog_message_factory_reset">Are you sure you want to perform a factory reset? All settings will revert to factory defaults.</string>
+        <string name="dialog_button_reset">Reset</string>
+        <string name="dialog_button_cancel">Cancel</string>
+
+        <string name="label_get_protocol">Get Protocol</string> <!-- Contoh jika ada tombol Get terpisah -->
+    <string name="title_activity_radar">Pelacakan Tag (Radar)</string>
+    <string name="hint_epc_target">EPC Target (Opsional)</string>
+    <string name="status_radar_idle">Siap untuk melacak</string>
+    <string name="label_search_range">Jangkauan/Daya</string>
+    <string name="button_start_tracking">MULAI</string>
+    <string name="button_stop_tracking">HENTIKAN</string>
+    <!-- Pesan Toast/Status -->
+    <string name="reader_not_ready">Reader belum siap. Coba lagi.</string>
+    <string name="tracking_already_running">Pelacakan sudah berjalan.</string>
+    <string name="failed_to_start_tracking">Gagal memulai pelacakan radar.</string>
+    <string name="tracking_started">Pelacakan radar dimulai...</string>
+    <string name="tracking_stopped">Pelacakan radar dihentikan.</string>
+    <string name="failed_set_distance_param">Gagal mengatur parameter jarak.</string>
+    <string name="uhf_reader_init_success">SIMULASI: Reader UHF berhasil diinisialisasi</string>
+    <string name="uhf_reader_init_failed">Gagal inisialisasi reader UHF</string>
+
+        <!-- String untuk StockOpnameViewModel -->
+        <string name="sdk_error_prefix">SDK Error: %s</string>
+        <string name="uhf_scan_finished">UHF scan selesai.</string>
+        <string name="opname_session_started">Sesi opname dimulai. Pindai item.</string>
+
+        <!-- Digunakan di processScannedIdentifier -->
+        <!-- %1$s: ScanMethod (UHF/Barcode), %2$s: Identifier (EPC/Barcode), %3$s: Judul Buku -->
+        <string name="scan_success_item_found">%1$s: Ditemukan item %2$s (%3$s).</string>
+        <!-- %1$s: ScanMethod (UHF/Barcode), %2$s: Identifier (EPC/Barcode), %3$s: Judul Buku -->
+        <string name="scan_already_found">%1$s: Item %2$s (%3$s) sudah ditemukan sebelumnya.</string>
+        <!-- %1$s: ScanMethod (UHF/Barcode), %2$s: Identifier (EPC/Barcode) -->
+        <string name="scan_item_not_in_master">%1$s: Item %2$s tidak ada dalam daftar master.</string>
+
+        <!-- Digunakan di toggleUhfScan dan toggleBarcodeScan -->
+        <string name="stop_barcode_scan_first">Hentikan pemindaian barcode terlebih dahulu.</string>
+        <string name="uhf_scan_starting">Memulai pemindaian UHF...</string>
+        <string name="stop_uhf_scan_first">Hentikan pemindaian UHF terlebih dahulu.</string>
+        <string name="barcode_scan_starting">Memulai pemindaian barcode...</string>
+        <string name="barcode_scan_stopped_manual">Pemindaian barcode dihentikan.</string>
+
+                <!-- %1$s: Nama Sesi Opname -->
+        <string name="opname_session_saved_and_reset">Sesi opname \'%1$s\' berhasil disimpan. Sesi baru dimulai.</string>
+
+                <!-- String untuk filter -->
+        <string name="filter_semua">Semua</string>
+        <string name="filter_ditemukan">Ditemukan</string>
+        <string name="filter_belum_ditemukan">Belum Ditemukan</string>
+        <string name="filter_belum_scan">Belum Scan</string>
+
+
+        <!-- String untuk dialog penyimpanan -->
+        <string name="dialog_save_opname_title">Simpan Sesi Stock Opname</string>
+        <string name="dialog_opname_name_hint">Nama Sesi Opname (cth: Opname Bulanan)</string>
+        <string name="dialog_export_to_txt">Ekspor ke file .txt?</string>
+        <string name="dialog_button_save">Simpan</string>
+        <string name="opname_name_cannot_be_empty">Nama sesi opname tidak boleh kosong.</string>
+        <string name="save_opname_success">Sesi opname berhasil disimpan.</string>
+        <string name="save_opname_success_with_export">Sesi opname berhasil disimpan dan diekspor ke %s</string>
+        <string name="save_opname_failed">Gagal menyimpan sesi opname.</string>
+        <string name="export_permission_denied">Izin penyimpanan ditolak. Tidak dapat mengekspor file.</string>
+        <string name="error_creating_export_file">Gagal membuat file ekspor.</string>
+
+        <!-- String untuk UI Lainnya di Activity -->
+        <string name="label_total_books">Total:</string>
+        <string name="label_found_books">Ditemukan:</string>
+        <string name="label_missing_books">Belum Scan:</string>
+        <string name="button_start_uhf_scan">Scan UHF</string>
+        <string name="button_start_barcode_scan">Barcode</string>
+        <string name="button_stop_uhf_scan">Stop UHF</string>
+        <string name="button_stop_barcode_scan">Stop Barcode</string>
+        <string name="button_trigger_barcode_scan">Scan Barcode</string>
+        <string name="button_save_opname">Simpan Opname</string>
+        <string name="button_load_master_data">Muat Data Master</string>
+        <string name="scan_active_tap_to_stop">SCAN AKTIF (TAP UNTUK STOP)</string>
+        <string name="scan_ready_prompt">Siap untuk scan</string>
+        <string name="scan_barcode_active_tap_to_stop">SCAN BARCODE AKTIF (TAP UNTUK STOP)</string>
+        <string name="total_books_label">Total:</string>
+        <string name="filter_status_hint_label">Filter Status</string>
+        <string name="filter_status_hint_actv">Pilih status</string>
+    <string name="app_logo_description">Aplikasi Stok Opname</string>>
+
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="RadarView">
+        <attr name="centerImage" format="reference" />
+        <!-- Tambahkan atribut lain jika perlu, misal: -->
+        <!-- <attr name="scaleColor" format="color" /> -->
+        <!-- <attr name="scanColor" format="color" /> -->
+    </declare-styleable>
+
+    <!-- Jika CircleSeekBar Anda punya atribut kustom -->
+    <!--
+    <declare-styleable name="CircleSeekBar">
+        <attr name="discretePoints" format="integer" />
+        <attr name="pointColor" format="color" />
+    </declare-styleable>
+    -->
+</resources>

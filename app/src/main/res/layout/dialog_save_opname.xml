@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/textViewDialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/save_opname_results_title"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/textInputLayoutOpnameName"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:hint="@string/dialog_opname_name_hint">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editTextOpnameName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textCapWords"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <CheckBox
+        android:id="@+id/checkBoxExportToTxt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/dialog_export_to_txt"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:id="@+id/textViewDialogMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/save_confirmation_message_prefix"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/textViewDialogMessageDetails1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/opname_data_will_be_recorded"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:drawablePadding="8dp"
+        android:drawableStart="@drawable/ic_baseline_check_circle_24" />
+    <!-- Anda perlu icon ic_baseline_check_circle_24, atau ganti/hapus drawableStart -->
+
+    <TextView
+        android:id="@+id/textViewDialogMessageDetails2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/scan_status_will_be_reset"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:drawablePadding="8dp"
+        android:layout_marginBottom="16dp"
+        android:drawableStart="@drawable/ic_baseline_check_circle_24" />
+    <!-- Anda perlu icon ic_baseline_check_circle_24, atau ganti/hapus drawableStart -->
+
+</LinearLayout>

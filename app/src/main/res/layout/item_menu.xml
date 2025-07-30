@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <ImageView
+        android:id="@+id/imageViewMenuItemIcon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        tools:srcCompat="@drawable/ic_launcher_background" /> <!-- Contoh ikon -->
+
+    <TextView
+        android:id="@+id/textViewMenuItemTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        tools:text="Menu Title"
+        android:gravity="center"
+        android:textSize="12sp"/>
+</LinearLayout>
