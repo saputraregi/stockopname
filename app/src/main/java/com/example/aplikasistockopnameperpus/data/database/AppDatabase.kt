@@ -1,9 +1,14 @@
 package com.example.aplikasistockopnameperpus.data.database
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+
+
 
 @Database(
     entities = [
@@ -11,8 +16,8 @@ import androidx.room.RoomDatabase
         StockOpnameReport::class,
         StockOpnameItem::class
     ],
-    version = 1, // Naikkan versi jika skema berubah, dan tambahkan migrasi
-    exportSchema = false // Set true jika ingin mengekspor skema ke file JSON
+    version = 1, // Target versi database
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -26,15 +31,22 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                val currentInstance = INSTANCE
+                if (currentInstance != null) {
+                    return currentInstance
+                }
+                Log.d("AppDatabase_SETUP", "Creating new database instance with fallback. Target Version: 1")
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "stock_opname_perpus_db" // Nama file database Anda
+                    "stock_opname_perpus_db"
                 )
-                    // .addMigrations(MIGRATION_1_2) // Tambahkan jika ada migrasi
-                    .fallbackToDestructiveMigrationFrom(true) // HATI-HATI: Hapus data jika skema berubah & tidak ada migrasi
+                    // HAPUS .addMigrations(...) UNTUK SEMENTARA
+                    .fallbackToDestructiveMigration() // INI AKAN MENGHAPUS DATABASE LAMA
+                    .setJournalMode(JournalMode.TRUNCATE) // Opsional
                     .build()
                 INSTANCE = instance
+                Log.d("AppDatabase_SETUP", "Database instance created using fallback.")
                 instance
             }
         }

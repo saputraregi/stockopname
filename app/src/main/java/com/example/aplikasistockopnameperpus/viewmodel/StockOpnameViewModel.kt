@@ -6,410 +6,523 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aplikasistockopnameperpus.MyApplication
 import com.example.aplikasistockopnameperpus.R
+import com.example.aplikasistockopnameperpus.data.database.BookMaster
+import com.example.aplikasistockopnameperpus.data.database.StockOpnameItem
+import com.example.aplikasistockopnameperpus.data.database.StockOpnameReport
+import com.example.aplikasistockopnameperpus.data.repository.BookRepository
+import com.example.aplikasistockopnameperpus.model.ScanMethod
 import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
-// Impor dari lokasi yang benar
-import com.example.aplikasistockopnameperpus.data.database.BookMaster // Entitas Room
-import com.example.aplikasistockopnameperpus.model.BookOpname // Dari OpnameModels.kt
-import com.example.aplikasistockopnameperpus.model.ScanMethod // Dari OpnameModels.kt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-// Definisi UiState tetap di sini atau dipindahkan ke file model juga bisa
-sealed class UiState {
-    data object Initial : UiState()
-    data object Loading : UiState()
+// Asumsi User data class sederhana
+data class User(val uid: String, val displayName: String? = null)
+
+sealed class StockOpnameUiState {
+    data object Initial : StockOpnameUiState()
+    data object Loading : StockOpnameUiState()
     data class Success(
-        val allBooks: List<BookOpname>,
-        val displayedBooks: List<BookOpname>,
-        val totalBooks: Int,
-        val foundBooks: Int,
-        val missingBooks: Int,
-        val isScanning: Boolean,
+        val displayedBooks: List<BookMaster>,
+        val allBooksInCurrentSession: List<BookMaster>,
+        val totalBooksInMaster: Int,
+        val foundBooksInSession: Int,
+        val misplacedBooksInSession: Int,
+        val missingBooksInSession: Int,
+        val newOrUnexpectedBooksCount: Int = 0, // Menggunakan BookMaster.isNewOrUnexpected
+        val isUhfScanning: Boolean,
         val isBarcodeScanning: Boolean,
         val lastScanMessage: String,
         val currentFilter: String = "Semua",
-        val toastMessage: String? = null
-    ) : UiState()
-    data class Error(val message: String) : UiState()
+        val toastMessage: String? = null,
+        val currentOpnameSessionName: String = "Sesi Default",
+        val sessionStartTimeMillis: Long = System.currentTimeMillis()
+    ) : StockOpnameUiState()
+
+    data class Error(val message: String) : StockOpnameUiState()
 }
 
 class StockOpnameViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
-    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-
-    private val sdkManager: ChainwaySDKManager =
-        (application as MyApplication).chainwaySDKManager
-
-    // Ini akan diisi dari database (Room) melalui Repository nantinya
-    // Untuk sekarang, kita masih menggunakan simulasi
-    private var allMasterBooksList: List<BookMaster> = emptyList()
-    private var currentOpnameSessionBooks: MutableMap<String, BookOpname> = mutableMapOf() // Key: rfidTagHex atau itemCode
-
+    private val bookRepository: BookRepository = (application as MyApplication).bookRepository
+    private val sdkManager: ChainwaySDKManager = (application as MyApplication).sdkManager
     private val app = application
+
+    private val _uiState = MutableStateFlow<StockOpnameUiState>(StockOpnameUiState.Initial)
+    val uiState: StateFlow<StockOpnameUiState> = _uiState.asStateFlow()
+
+    private val _currentFilter = MutableStateFlow("Semua")
+
+    // Placeholder User - Sesuaikan dengan implementasi Anda
+    private val _currentUser = MutableStateFlow(User(uid = "default_user"))
+    // val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
+
+    private val allBooksFromRepo: StateFlow<List<BookMaster>> = bookRepository.getAllBookMastersFlow()
+        .catch { e ->
+            Log.e("StockOpnameViewModel", "Error collecting books from repo", e)
+            _uiState.value = StockOpnameUiState.Error("Gagal memuat data buku: ${e.message}")
+            emit(emptyList())
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    private var observerJob: Job? = null
+    private var temporaryUnexpectedItems = mutableListOf<StockOpnameItem>()
+
 
     init {
         Log.d("StockOpnameViewModel", "ViewModel initialized.")
         setupSdkListeners()
+        observeBookDataAndUpdateUi()
+        // Anda bisa memanggil startNewOpnameSession() di sini atau dari UI
+    }
+
+    private fun observeBookDataAndUpdateUi() {
+        observerJob?.cancel()
+        observerJob = viewModelScope.launch {
+            allBooksFromRepo.combine(_currentFilter) { books, filter ->
+                val filteredBooksForDisplay = filterAndSortBooks(books, filter)
+                val allBooksForSessionCalculation = books
+
+                val totalMaster = allBooksForSessionCalculation.size
+                val foundCount = allBooksForSessionCalculation.count { it.scanStatus == "DITEMUKAN" }
+                val misplacedCount = allBooksForSessionCalculation.count { it.scanStatus == "LOKASI_SALAH" }
+                val missingCount = allBooksForSessionCalculation.count {
+                    it.scanStatus == "BELUM_DITEMUKAN_SESI_INI" || it.scanStatus.isNullOrBlank()
+                }
+                val newOrUnexpectedCount = allBooksForSessionCalculation.count { it.isNewOrUnexpected == true } +
+                        temporaryUnexpectedItems.count { it.status == "TIDAK_DITEMUKAN_DI_MASTER" }
+
+
+                val currentSuccessState = _uiState.value as? StockOpnameUiState.Success
+                StockOpnameUiState.Success(
+                    displayedBooks = filteredBooksForDisplay,
+                    allBooksInCurrentSession = allBooksForSessionCalculation,
+                    totalBooksInMaster = totalMaster,
+                    foundBooksInSession = foundCount,
+                    misplacedBooksInSession = misplacedCount,
+                    missingBooksInSession = missingCount,
+                    newOrUnexpectedBooksCount = newOrUnexpectedCount,
+                    isUhfScanning = currentSuccessState?.isUhfScanning ?: false,
+                    isBarcodeScanning = currentSuccessState?.isBarcodeScanning ?: false,
+                    lastScanMessage = currentSuccessState?.lastScanMessage ?: app.getString(R.string.start_opname_session),
+                    currentFilter = filter,
+                    toastMessage = null,
+                    currentOpnameSessionName = currentSuccessState?.currentOpnameSessionName ?: "Sesi ${System.currentTimeMillis()}",
+                    sessionStartTimeMillis = currentSuccessState?.sessionStartTimeMillis ?: System.currentTimeMillis()
+                )
+            }.catch { e ->
+                Log.e("StockOpnameViewModel", "Error combining flows", e)
+                _uiState.value = StockOpnameUiState.Error("Terjadi kesalahan internal: ${e.message}")
+            }.collect { newSuccessState ->
+                _uiState.value = newSuccessState
+            }
+        }
     }
 
     private fun setupSdkListeners() {
-        sdkManager.onUhfTagScanned = { epc -> // epc adalah rfidTagHex
-            Log.d("StockOpnameViewModel", "onUhfTagScanned: $epc")
-            processScannedIdentifier(epc, ScanMethod.UHF)
+        sdkManager.onUhfTagScanned = { epc ->
+            Log.d("StockOpnameViewModel", "SDK: onUhfTagScanned: $epc")
+            if ((_uiState.value as? StockOpnameUiState.Success)?.isUhfScanning == true) {
+                // Asumsi lokasi default untuk scan UHF, bisa dibuat lebih dinamis
+                processScannedIdentifier(epc, ScanMethod.UHF, "Lokasi Scan UHF")
+            }
         }
-        sdkManager.onBarcodeScanned = { barcodeData -> // barcodeData adalah itemCode
-            Log.d("StockOpnameViewModel", "onBarcodeScanned: $barcodeData")
-            processScannedIdentifier(barcodeData, ScanMethod.BARCODE)
+        sdkManager.onBarcodeScanned = { barcodeData ->
+            Log.d("StockOpnameViewModel", "SDK: onBarcodeScanned: $barcodeData")
+            if ((_uiState.value as? StockOpnameUiState.Success)?.isBarcodeScanning == true) {
+                processScannedIdentifier(barcodeData, ScanMethod.BARCODE, "Lokasi Scan Barcode")
+            }
         }
         sdkManager.onError = { errorMessage ->
-            Log.e("StockOpnameViewModel", "onError from SDK: $errorMessage")
+            Log.e("StockOpnameViewModel", "SDK: onError: $errorMessage")
             _uiState.update { currentState ->
                 val newToastMessage = app.getString(R.string.sdk_error_prefix, errorMessage)
-                if (currentState is UiState.Success) {
+                if (currentState is StockOpnameUiState.Success) {
                     currentState.copy(
                         toastMessage = newToastMessage,
-                        isScanning = false,
+                        isUhfScanning = false,
                         isBarcodeScanning = false
                     )
                 } else {
-                    // Jika state Error, mungkin tampilkan toast di Activity berdasarkan message dari Error state
-                    UiState.Error(newToastMessage) // Atau update dengan pesan error baru
+                    StockOpnameUiState.Error(newToastMessage)
                 }
             }
         }
         sdkManager.onUhfInventoryFinished = {
-            Log.d("StockOpnameViewModel", "onUhfInventoryFinished")
+            Log.d("StockOpnameViewModel", "SDK: onUhfInventoryFinished")
             _uiState.update { currentState ->
-                if (currentState is UiState.Success) {
-                    currentState.copy(isScanning = false, lastScanMessage = app.getString(R.string.uhf_scan_finished))
-                } else {
-                    currentState
-                }
+                if (currentState is StockOpnameUiState.Success) {
+                    currentState.copy(isUhfScanning = false, lastScanMessage = app.getString(R.string.uhf_scan_finished))
+                } else currentState
             }
         }
     }
 
-    fun loadInitialMasterData() {
-        if (_uiState.value is UiState.Loading || (_uiState.value is UiState.Success && allMasterBooksList.isNotEmpty())) {
-            Log.d("StockOpnameViewModel", "Skipping loadInitialMasterData: already loading or data exists.")
-            return
-        }
-
+    fun startNewOpnameSession(sessionName: String? = null) {
         viewModelScope.launch {
-            _uiState.value = UiState.Loading
-            Log.d("StockOpnameViewModel", "Loading initial master data...")
+            _uiState.value = StockOpnameUiState.Loading
+            Log.d("StockOpnameViewModel", "Starting new opname session, resetting scan statuses...")
+            try {
+                bookRepository.resetAllBookScanStatusForNewSession()
+                temporaryUnexpectedItems.clear() // Bersihkan item tak terduga dari sesi sebelumnya
+                val newSessionName = sessionName ?: "Sesi Opname ${System.currentTimeMillis()}"
+                val newSessionStartTime = System.currentTimeMillis()
 
-            // --- SIMULASI LOAD DATA MASTER ---
-            // Ganti ini dengan pemanggilan ke Repository untuk mendapatkan data dari Room
-            kotlinx.coroutines.delay(1000) // Simulasi delay
-
-            // Menggunakan field dari BookMaster entitas Room
-            allMasterBooksList = listOf(
-                BookMaster(id = 1, itemCode = "BC001", title = "Pemrograman Java Lanjut", expectedLocation = "Rak A1", rfidTagHex = "EPC001", scanStatus = "Belum Scan", lastSeenTimestamp = null /* properti lain dari BookMaster entitas */),
-                BookMaster(id = 2, itemCode = "BC002", title = "Belajar Kotlin untuk Android", expectedLocation = "Rak B2", rfidTagHex = "EPC002", scanStatus = "Belum Scan", lastSeenTimestamp = null),
-                BookMaster(id = 3, itemCode = "BC003", title = "Dasar-Dasar Jaringan Komputer", expectedLocation = "Rak C3", rfidTagHex = "EPC003", scanStatus = "Belum Scan", lastSeenTimestamp = null),
-                BookMaster(id = 4, itemCode = "BC004", title = "Algoritma dan Struktur Data", expectedLocation = "Rak A1", rfidTagHex = "EPC004", scanStatus = "Belum Scan", lastSeenTimestamp = null), // Contoh tanpa itemCode berbeda jika EPC adalah primary key identifikasi
-                BookMaster(id = 5, itemCode = "BC005", title = "Manajemen Proyek Perangkat Lunak", expectedLocation = "Rak D1", rfidTagHex = "TAGNONHEX005", scanStatus = "Belum Scan", lastSeenTimestamp = null) // Contoh tanpa rfidTagHex yang valid (atau rfidTagHex null jika diizinkan oleh DB)
-            )
-            // --- AKHIR SIMULASI ---
-
-            initializeNewOpnameSession()
-        }
-    }
-
-    private fun initializeNewOpnameSession() {
-        currentOpnameSessionBooks.clear()
-        allMasterBooksList.forEach { master ->
-            // Kunci unik: rfidTagHex jika ada, jika tidak itemCode.
-            // Pastikan salah satu dari ini unik dan tidak null untuk setiap buku master.
-            // Atau gunakan master.id.toString() jika selalu unik dan tersedia.
-            val key = master.rfidTagHex.takeIf { !it.isNullOrBlank() } ?: master.itemCode
-            if (key.isNotBlank()) { // Hanya tambahkan jika ada kunci yang valid
-                currentOpnameSessionBooks[key] = BookOpname(
-                    bookMaster = master.copy(scanStatus = "Belum Scan", lastSeenTimestamp = null), // Reset status untuk sesi baru
-                    isFound = false,
-                    scanTime = null,
-                    scanMethod = null
+                _uiState.value = StockOpnameUiState.Success(
+                    displayedBooks = emptyList(),
+                    allBooksInCurrentSession = emptyList(),
+                    totalBooksInMaster = 0,
+                    foundBooksInSession = 0,
+                    misplacedBooksInSession = 0,
+                    missingBooksInSession = 0,
+                    newOrUnexpectedBooksCount = 0,
+                    isUhfScanning = false,
+                    isBarcodeScanning = false,
+                    lastScanMessage = app.getString(R.string.opname_session_started),
+                    currentFilter = _currentFilter.value,
+                    toastMessage = null,
+                    currentOpnameSessionName = newSessionName,
+                    sessionStartTimeMillis = newSessionStartTime
                 )
-            } else {
-                Log.w("StockOpnameViewModel", "Book with title '${master.title}' lacks a valid key (rfidTagHex or itemCode) and will be skipped.")
+                observeBookDataAndUpdateUi() // Muat ulang data buku
+                Log.d("StockOpnameViewModel", "Scan statuses reset. Opname session ready: $newSessionName.")
+            } catch (e: Exception) {
+                Log.e("StockOpnameViewModel", "Error resetting scan statuses", e)
+                _uiState.value = StockOpnameUiState.Error("Gagal memulai sesi baru: ${e.message}")
             }
         }
-
-        val initialBooks = currentOpnameSessionBooks.values.toList()
-        _uiState.value = UiState.Success(
-            allBooks = initialBooks,
-            displayedBooks = filterAndSortBooks(initialBooks, "Semua"),
-            totalBooks = allMasterBooksList.size, // atau currentOpnameSessionBooks.size jika ada yang diskip
-            foundBooks = 0,
-            missingBooks = currentOpnameSessionBooks.size, // Berdasarkan buku yang masuk sesi
-            isScanning = false,
-            isBarcodeScanning = false,
-            lastScanMessage = app.getString(R.string.opname_session_started),
-            currentFilter = "Semua"
-        )
-        Log.d("StockOpnameViewModel", "New opname session initialized. Total books in session: ${currentOpnameSessionBooks.size}")
     }
 
-    private fun processScannedIdentifier(identifier: String, method: ScanMethod) {
+    fun updateCurrentOpnameSessionName(newName: String) {
+        _uiState.update { currentState ->
+            if (currentState is StockOpnameUiState.Success) {
+                currentState.copy(currentOpnameSessionName = newName.ifBlank { "Sesi Default" })
+            } else currentState
+        }
+    }
+
+    private fun processScannedIdentifier(identifier: String, method: ScanMethod, actualLocationIfKnown: String) {
         if (identifier.isBlank()) {
             Log.w("StockOpnameViewModel", "Empty identifier received from $method, ignoring.")
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { currentState ->
-                if (currentState !is UiState.Success) return@update currentState
-
-                var foundBookOpname: BookOpname? = null
-                var keyForMapUpdate: String? = null // Kunci yang digunakan di currentOpnameSessionBooks
-
-                when (method) {
-                    ScanMethod.UHF -> {
-                        // Cari berdasarkan rfidTagHex. Kunci map juga harus rfidTagHex jika ini yang ditemukan.
-                        foundBookOpname = currentOpnameSessionBooks.values.find { it.bookMaster.rfidTagHex == identifier }
-                        keyForMapUpdate = identifier // Jika ditemukan by UHF, identifier adalah rfidTagHex
-                    }
-                    ScanMethod.BARCODE -> {
-                        // Cari berdasarkan itemCode. Kunci map juga harus itemCode jika ini yang ditemukan.
-                        foundBookOpname = currentOpnameSessionBooks.values.find { it.bookMaster.itemCode == identifier }
-                        keyForMapUpdate = identifier // Jika ditemukan by Barcode, identifier adalah itemCode
-                        // Jika kunci map Anda bisa jadi rfidTagHex meskipun scan by barcode (jika rfidTagHex ada),
-                        // Anda perlu logika tambahan untuk menemukan kunci yang benar.
-                        // Untuk simple, kita asumsikan jika scan by barcode, key-nya adalah barcode (itemCode).
-                        // Namun, jika itemCode tidak unik di map jika rfidTagHex juga jadi key, ini bisa jadi masalah.
-                        // Solusi lebih baik adalah menggunakan ID unik buku (master.id) sebagai key di map.
-                        // Untuk sekarang, kita lanjutkan dengan asumsi identifier adalah key yang benar.
-                    }
-                }
-
-                var newLastScanMessage: String
-
-                if (foundBookOpname != null && keyForMapUpdate != null && currentOpnameSessionBooks.containsKey(keyForMapUpdate)) {
-                    if (!foundBookOpname.isFound) {
-                        val updatedBookMaster = foundBookOpname.bookMaster.copy(
-                            scanStatus = "Ditemukan",
-                            lastSeenTimestamp = System.currentTimeMillis()
-                        )
-                        val updatedBookOpname = foundBookOpname.copy(
-                            isFound = true,
-                            scanTime = System.currentTimeMillis(),
-                            scanMethod = method,
-                            bookMaster = updatedBookMaster
-                        )
-                        currentOpnameSessionBooks[keyForMapUpdate] = updatedBookOpname // Update map dengan BookOpname baru
-                        newLastScanMessage = app.getString(R.string.scan_success_item_found, method.displayName, identifier, updatedBookOpname.bookMaster.title)
-                        Log.i("StockOpnameViewModel", "Book found: ${updatedBookOpname.bookMaster.title} by $method")
-                    } else {
-                        newLastScanMessage = app.getString(R.string.scan_already_found, method.displayName, identifier, foundBookOpname.bookMaster.title)
-                        Log.i("StockOpnameViewModel", "Book already found: ${foundBookOpname.bookMaster.title}")
-                    }
-                } else {
-                    newLastScanMessage = app.getString(R.string.scan_item_not_in_master, method.displayName, identifier)
-                    Log.w("StockOpnameViewModel", "Identifier not in master or key mismatch: $identifier by $method")
-                }
-
-                val updatedBooksList = currentOpnameSessionBooks.values.toList()
-                val newFoundCount = updatedBooksList.count { it.isFound }
-
-                currentState.copy(
-                    allBooks = updatedBooksList,
-                    displayedBooks = filterAndSortBooks(updatedBooksList, currentState.currentFilter),
-                    foundBooks = newFoundCount,
-                    missingBooks = currentOpnameSessionBooks.size - newFoundCount,
-                    lastScanMessage = newLastScanMessage,
-                    toastMessage = if (foundBookOpname == null) newLastScanMessage else null
-                )
+            val book: BookMaster? = when (method) {
+                ScanMethod.UHF -> bookRepository.getBookByRfidTag(identifier)
+                ScanMethod.BARCODE -> bookRepository.getBookByItemCode(identifier)
             }
+
+            val currentTimestamp = System.currentTimeMillis()
+            var scanMessage: String
+            var newStatusForMaster: String? = null // Status untuk diupdate ke BookMaster
+            var newStatusForOpnameItem: String // Status untuk StockOpnameItem
+            var isNewOrUnexpectedInMaster = false
+            var itemForReport: StockOpnameItem? = null
+
+
+            if (book != null) { // Buku ditemukan di master
+                val bookTitle = book.title
+                isNewOrUnexpectedInMaster = book.isNewOrUnexpected ?: false
+
+                if (book.scanStatus == "DITEMUKAN" || book.scanStatus == "LOKASI_SALAH") {
+                    scanMessage = app.getString(R.string.scan_already_processed, method.displayName, identifier, bookTitle)
+                    newStatusForOpnameItem = book.scanStatus!! // Gunakan status yang sudah ada untuk item laporan
+                } else {
+                    if (book.expectedLocation.equals(actualLocationIfKnown, ignoreCase = true)) {
+                        newStatusForMaster = "DITEMUKAN"
+                        scanMessage = app.getString(R.string.scan_success_item_found_location, method.displayName, identifier, bookTitle, actualLocationIfKnown)
+                    } else {
+                        newStatusForMaster = "LOKASI_SALAH"
+                        scanMessage = app.getString(R.string.scan_success_item_misplaced, method.displayName, identifier, bookTitle, actualLocationIfKnown, book.expectedLocation ?: "N/A")
+                    }
+                    newStatusForOpnameItem = newStatusForMaster // Sama untuk item laporan
+                }
+
+                // Update BookMaster jika status berubah
+                if (newStatusForMaster != null && newStatusForMaster != book.scanStatus) {
+                    when (method) {
+                        ScanMethod.UHF -> bookRepository.updateBookScanStatusByRfid(
+                            rfidTag = identifier,
+                            status = newStatusForMaster,
+                            timestamp = currentTimestamp,
+                            actualLocation = actualLocationIfKnown
+                        )
+                        ScanMethod.BARCODE -> bookRepository.updateBookScanStatusByItemCode(
+                            itemCode = identifier,
+                            status = newStatusForMaster,
+                            timestamp = currentTimestamp,
+                            actualLocation = actualLocationIfKnown
+                        )
+                    }
+                    Log.i("StockOpnameViewModel", "BookMaster ${book.title} status updated to $newStatusForMaster")
+                }
+
+                itemForReport = StockOpnameItem(
+                    reportId = 0L, // Akan diisi oleh repository
+                    rfidTagHexScanned = book.rfidTagHex ?: (if (method == ScanMethod.BARCODE) "N/A_BC_${identifier}" else identifier),
+                    tidScanned = book.tid,
+                    itemCodeMaster = book.itemCode,
+                    titleMaster = book.title,
+                    scanTimestamp = currentTimestamp,
+                    status = newStatusForOpnameItem,
+                    actualLocationIfDifferent = if (book.expectedLocation.equals(actualLocationIfKnown, ignoreCase = true)) null else actualLocationIfKnown
+                )
+
+            } else { // Buku/identifier tidak ditemukan di master
+                newStatusForOpnameItem = "TIDAK_DITEMUKAN_DI_MASTER"
+                scanMessage = app.getString(R.string.scan_item_not_in_master, method.displayName, identifier)
+                isNewOrUnexpectedInMaster = true // Tandai sebagai baru/tak terduga
+                Log.w("StockOpnameViewModel", "Identifier not in master: $identifier by $method. Marked as unexpected.")
+
+                // Buat item untuk laporan, tandai sebagai tidak dikenal
+                itemForReport = StockOpnameItem(
+                    reportId = 0L,
+                    rfidTagHexScanned = if (method == ScanMethod.UHF) identifier else "N/A_BC_UNKNOWN_${identifier.take(20)}", // Handle barcode scan
+                    tidScanned = null, // Tidak diketahui karena tidak ada di master
+                    itemCodeMaster = if (method == ScanMethod.BARCODE) identifier else null, // Simpan barcode jika itu yang discan
+                    titleMaster = "Item Tidak Dikenal",
+                    scanTimestamp = currentTimestamp,
+                    status = newStatusForOpnameItem,
+                    actualLocationIfDifferent = actualLocationIfKnown // Selalu catat lokasinya
+                )
+                // Tambahkan ke list sementara untuk UI, akan dimasukkan ke DB saat simpan sesi
+                temporaryUnexpectedItems.removeAll { it.rfidTagHexScanned == itemForReport.rfidTagHexScanned } // Hapus jika sudah ada, untuk update
+                temporaryUnexpectedItems.add(itemForReport)
+
+                // Opsional: Jika ingin langsung update BookMaster saat item baru ditemukan (meskipun tidak ideal tanpa info lengkap)
+                // Anda bisa membuat objek BookMaster baru dan menyimpannya
+                // bookRepository.insertOrUpdateBookMaster(BookMaster(itemCode = "UNKNOWN_...", title = "Item Tidak Dikenal", rfidTagHex = identifier, isNewOrUnexpected = true, scanStatus = "DITEMUKAN", lastSeenTimestamp = currentTimestamp, actualScannedLocation = actualLocationIfKnown))
+            }
+
+            _uiState.update { currentState ->
+                if (currentState is StockOpnameUiState.Success) {
+                    currentState.copy(
+                        lastScanMessage = scanMessage,
+                        toastMessage = if (isNewOrUnexpectedInMaster && book == null) scanMessage else null // Toast hanya untuk item yg benar2 baru
+                    )
+                } else currentState
+            }
+            // Panggil lagi untuk update statistik newOrUnexpectedBooksCount
+            observeBookDataAndUpdateUi()
         }
     }
 
-
     fun toggleUhfScan() {
         val currentState = _uiState.value
-        if (currentState is UiState.Success) {
-            if (currentState.isScanning) {
-                // HENTIKAN SCAN UHF
-                // uhfManager.stopInventory() // Contoh
-                Log.d("ViewModel", "Stopping UHF Scan")
+        if (currentState is StockOpnameUiState.Success) {
+            val newIsScanning = !currentState.isUhfScanning
+            // Asumsi sederhana: jika sdkManager ada, maka ready. IDEALNYA, ChainwaySDKManager punya method isReady() sendiri.
+            if (newIsScanning && sdkManager != null /* && sdkManager.isReady() */) {
+                sdkManager.startUhfInventory()
+                Log.d("StockOpnameViewModel", "Starting UHF Scan")
                 _uiState.update {
-                    (it as UiState.Success).copy(
-                        isScanning = false,
-                        lastScanMessage = "Scan UHF dihentikan."
+                    (it as StockOpnameUiState.Success).copy(
+                        isUhfScanning = true,
+                        isBarcodeScanning = false,
+                        lastScanMessage = app.getString(R.string.uhf_scan_starting)
                     )
                 }
-            } else {
-                // MULAI SCAN UHF
-                // Pastikan reader terhubung dan siap
-                // uhfManager.startInventory { epc -> onUhfTagReceived(epc) } // Contoh
-                Log.d("ViewModel", "Starting UHF Scan")
+            } else if (!newIsScanning && sdkManager != null) {
+                sdkManager.stopUhfInventory()
+                Log.d("StockOpnameViewModel", "Stopping UHF Scan")
+                // Pesan 'scan finished' akan dihandle oleh callback onUhfInventoryFinished
                 _uiState.update {
-                    (it as UiState.Success).copy(
-                        isScanning = true,
-                        lastScanMessage = "Memindai UHF..."
+                    (it as StockOpnameUiState.Success).copy(
+                        isUhfScanning = false,
+                        lastScanMessage = app.getString(R.string.uhf_scan_stopped)
                     )
+                }
+            } else if (newIsScanning && sdkManager == null) {
+                _uiState.update {
+                    (it as StockOpnameUiState.Success).copy(toastMessage = "SDK UHF tidak tersedia.")
                 }
             }
-        } else if (currentState is UiState.Initial) {
-            // Mungkin perlu inisialisasi atau penanganan khusus jika scan dimulai dari Initial state
-            _uiState.value = UiState.Error("Silakan muat data master terlebih dahulu atau pastikan reader siap.")
+        } else {
+            _uiState.value = StockOpnameUiState.Error("Sesi belum siap untuk scan UHF.")
         }
-        // Tambahkan penanganan untuk state lain jika perlu
     }
 
     fun toggleBarcodeScan() {
         val currentState = _uiState.value
-        if (currentState is UiState.Success) {
-            if (currentState.isBarcodeScanning) {
-                // HENTIKAN SCAN BARCODE
-                // barcodeScanner.stop() // Contoh
-                Log.d("ViewModel", "Stopping Barcode Scan")
+        if (currentState is StockOpnameUiState.Success) {
+            val newIsScanning = !currentState.isBarcodeScanning
+            // Asumsi sederhana: jika sdkManager ada, maka ready.
+            if (newIsScanning && sdkManager != null /* && sdkManager.isReady() */ ) {
+                sdkManager.startBarcodeScan()
+                Log.d("StockOpnameViewModel", "Starting Barcode Scan")
                 _uiState.update {
-                    (it as UiState.Success).copy(
-                        isBarcodeScanning = false,
-                        lastScanMessage = "Scan Barcode dihentikan."
+                    (it as StockOpnameUiState.Success).copy(
+                        isBarcodeScanning = true,
+                        isUhfScanning = false,
+                        lastScanMessage = app.getString(R.string.barcode_scan_starting)
                     )
                 }
-            } else {
-                // MULAI SCAN BARCODE (mungkin membuka activity kamera atau mengaktifkan listener)
-                // barcodeScanner.start { barcodeData -> onBarcodeReceived(barcodeData) } // Contoh
-                Log.d("ViewModel", "Starting Barcode Scan")
+            } else if (!newIsScanning && sdkManager != null) {
+                sdkManager.stopBarcodeScan()
+                Log.d("StockOpnameViewModel", "Stopping Barcode Scan")
                 _uiState.update {
-                    (it as UiState.Success).copy(
-                        isBarcodeScanning = true,
-                        lastScanMessage = "Memindai Barcode..."
+                    (it as StockOpnameUiState.Success).copy(
+                        isBarcodeScanning = false,
+                        lastScanMessage = app.getString(R.string.barcode_scan_stopped)
                     )
+                }
+            } else if (newIsScanning && sdkManager == null) {
+                _uiState.update {
+                    (it as StockOpnameUiState.Success).copy(toastMessage = "SDK Barcode tidak tersedia.")
                 }
             }
-        } else if (currentState is UiState.Initial) {
-            _uiState.value = UiState.Error("Silakan muat data master terlebih dahulu.")
-        }
-        // Tambahkan penanganan untuk state lain jika perlu
-    }
-
-    // Callback saat tag UHF diterima (dipanggil oleh uhfManager)
-    private fun onUhfTagReceived(epc: String) {
-        // Logika untuk memproses EPC, update data buku, update UI state
-        // Pastikan untuk memeriksa apakah isScanning masih true
-        if ((_uiState.value as? UiState.Success)?.isScanning == true) {
-            // ... proses tag ...
-            // _uiState.update { ... }
+        } else {
+            _uiState.value = StockOpnameUiState.Error("Sesi belum siap untuk scan Barcode.")
         }
     }
-
-    // Callback saat barcode diterima (dipanggil oleh barcodeScanner)
-    private fun onBarcodeReceived(barcodeData: String) {
-        // Logika untuk memproses barcode, update data buku, update UI state
-        // Pastikan untuk memeriksa apakah isBarcodeScanning masih true
-        if ((_uiState.value as? UiState.Success)?.isBarcodeScanning == true) {
-            // ... proses barcode ...
-            // _uiState.update { ... }
-        }
-    }
-
 
     fun setFilter(filter: String) {
-        _uiState.update { currentState ->
-            if (currentState is UiState.Success) {
-                currentState.copy(
-                    displayedBooks = filterAndSortBooks(currentState.allBooks, filter),
-                    currentFilter = filter
-                )
-            } else {
-                currentState
-            }
-        }
+        _currentFilter.value = filter
     }
 
-    private fun filterAndSortBooks(books: List<BookOpname>, filter: String): List<BookOpname> {
+    private fun filterAndSortBooks(books: List<BookMaster>, filter: String): List<BookMaster> {
         val filtered = when (filter) {
             "Semua" -> books
-            "Ditemukan" -> books.filter { it.isFound }
-            "Belum Scan" -> books.filter { !it.isFound && it.bookMaster.scanStatus == "Belum Scan" } // Lebih spesifik
+            "Ditemukan" -> books.filter { it.scanStatus == "DITEMUKAN" }
+            "Belum Ditemukan" -> books.filter { it.scanStatus == "BELUM_DITEMUKAN_SESI_INI" || it.scanStatus.isNullOrBlank() && it.isNewOrUnexpected != true }
+            "Lokasi Salah" -> books.filter { it.scanStatus == "LOKASI_SALAH" }
+            "Baru/Tak Terduga" -> books.filter { it.isNewOrUnexpected == true } // Menggunakan field dari BookMaster
             else -> books
         }
-        return filtered.sortedWith(compareBy<BookOpname> { !it.isFound }.thenBy { it.bookMaster.title }) // Menggunakan 'title'
+        return filtered.sortedBy { it.title }
     }
 
-    fun saveCurrentOpnameSession(opnameName: String, exportToTxt: Boolean, onResult: (reportId: Long?, success: Boolean, filePath: String?) -> Unit) {
-        val currentStateValue = _uiState.value // Ambil nilai state sekali
-        if (currentStateValue !is UiState.Success || currentOpnameSessionBooks.isEmpty()) {
-            Log.w("StockOpnameViewModel", "No data to save or invalid state.")
-            onResult(null, false, null)
+    fun saveCurrentOpnameSession(
+        onResult: (reportId: Long?, success: Boolean, message: String) -> Unit
+    ) {
+        val currentStateValue = _uiState.value
+        if (currentStateValue !is StockOpnameUiState.Success) {
+            Log.w("StockOpnameViewModel", "Invalid state for saving. Current state: $currentStateValue")
+            onResult(null, false, "Sesi tidak valid atau belum dimulai.")
             return
         }
-        // Gunakan nilai state yang sudah diambil
-        if (currentStateValue.isScanning || currentStateValue.isBarcodeScanning) {
-            _uiState.update { // Tetap update _uiState untuk toast
-                if (it is UiState.Success) it.copy(toastMessage = app.getString(R.string.stop_scan_before_saving)) else it
-            }
-            onResult(null, false, null)
+
+        if (currentStateValue.isUhfScanning || currentStateValue.isBarcodeScanning) {
+            val stopScanMsg = app.getString(R.string.stop_scan_before_saving)
+            _uiState.update { if (it is StockOpnameUiState.Success) it.copy(toastMessage = stopScanMsg) else it }
+            onResult(null, false, stopScanMsg)
+            return
+        }
+
+        val userId = _currentUser.value?.uid ?: "unknown_user_on_save"
+        if (userId == "unknown_user_on_save" || userId.isBlank()) {
+            Log.e("StockOpnameViewModel", "User ID tidak diketahui, tidak bisa menyimpan sesi.")
+            onResult(null, false, "ID Pengguna tidak diketahui. Gagal menyimpan.")
             return
         }
 
         viewModelScope.launch {
-            Log.i("StockOpnameViewModel", "Attempting to save opname session: $opnameName, Export: $exportToTxt")
-            // --- SIMULASI LOGIKA PENYIMPANAN ---
-            // Di sini Anda akan mengganti dengan logika penyimpanan ke Room (melalui Repository)
-            // dan logika ekspor file yang sebenarnya.
-            // Contoh: val reportId = repository.saveOpnameReport(opnameName, currentOpnameSessionBooks.values.toList())
-            //         repository.saveOpnameDetails(reportId, currentOpnameSessionBooks.values.toList())
-            kotlinx.coroutines.delay(1500)
-            val mockReportId = System.currentTimeMillis() % 10000
-            var mockFilePath: String? = null
+            _uiState.update { if (it is StockOpnameUiState.Success) it.copy(toastMessage = "Menyimpan sesi opname...") else it }
 
-            if (exportToTxt) {
-                mockFilePath = "/storage/emulated/0/Download/${opnameName.replace(":", "-")}.txt"
-                Log.i("StockOpnameViewModel", "Simulating export to: $mockFilePath")
-                // Implementasi penulisan ke file:
-                // try {
-                //     val file = File(mockFilePath)
-                //     file.bufferedWriter().use { out ->
-                //         currentOpnameSessionBooks.values.forEach { bookOpname ->
-                //             out.write("Judul: ${bookOpname.bookMaster.title}, Status: ${if(bookOpname.isFound) "Ditemukan" else "Belum Ditemukan"}, EPC: ${bookOpname.bookMaster.rfidTagHex}\n")
-                //         }
-                //     }
-                // } catch (e: IOException) {
-                //     Log.e("StockOpnameViewModel", "Error exporting to TXT", e)
-                //     mockFilePath = null // Gagal export
-                // }
-            }
-            Log.i("StockOpnameViewModel", "Opname session '$opnameName' saved with ID $mockReportId. Exported to: $mockFilePath")
-            onResult(mockReportId, true, mockFilePath)
-            // --- AKHIR SIMULASI ---
+            val opnameSessionNameToSave = currentStateValue.currentOpnameSessionName.ifBlank { "Sesi ${System.currentTimeMillis()}" }
+            Log.i("StockOpnameViewModel", "Attempting to save opname session: $opnameSessionNameToSave by user: $userId")
 
-            // Reset untuk sesi baru setelah berhasil menyimpan
-            initializeNewOpnameSession()
-            _uiState.update { s ->
-                if(s is UiState.Success) s.copy(toastMessage = app.getString(R.string.opname_session_saved_and_reset, opnameName))
-                else s
+            try {
+                // Buat StockOpnameItems dari buku di master
+                val itemsFromMasterForReport: List<StockOpnameItem> = currentStateValue.allBooksInCurrentSession
+                    .filter { book -> // Hanya item yang discan atau relevan
+                        !book.scanStatus.isNullOrBlank() && book.scanStatus != "BELUM_DITEMUKAN_SESI_INI"
+                    }
+                    .mapNotNull { book ->
+                        // Pastikan ada rfidTagHex jika buku dari master dan statusnya bukan 'baru'
+                        // Jika buku itu 'isNewOrUnexpected' tapi ada di allBooksInCurrentSession, mungkin sudah ditambahkan manual
+                        if (book.rfidTagHex != null || book.isNewOrUnexpected == true) {
+                            StockOpnameItem(
+                                reportId = 0L, // Akan diisi oleh repository
+                                rfidTagHexScanned = book.rfidTagHex ?: "NEW_${book.itemCode.take(20)}", // Jika baru dan tdk ada RFID, buat ID sementara
+                                tidScanned = book.tid,
+                                itemCodeMaster = book.itemCode,
+                                titleMaster = book.title,
+                                scanTimestamp = book.lastSeenTimestamp ?: System.currentTimeMillis(),
+                                status = book.scanStatus!!, // Tidak null karena sudah difilter
+                                actualLocationIfDifferent = if (book.expectedLocation.equals(book.actualScannedLocation, ignoreCase = true)) null else book.actualScannedLocation
+                            )
+                        } else {
+                            Log.w("StockOpnameViewModel", "Book ${book.itemCode} skipped for report item, missing RFID and not marked new.")
+                            null
+                        }
+                    }
+
+                // Gabungkan dengan item tak terduga yang sudah dikumpulkan
+                val allItemsForReport = (itemsFromMasterForReport + temporaryUnexpectedItems).distinctBy { it.rfidTagHexScanned }
+
+
+                if (allItemsForReport.isEmpty() && currentStateValue.foundBooksInSession == 0 && currentStateValue.newOrUnexpectedBooksCount == 0) {
+                    val noDataMsg = "Tidak ada data item yang dipindai untuk disimpan."
+                    Log.w("StockOpnameViewModel", noDataMsg)
+                    _uiState.update { if (it is StockOpnameUiState.Success) it.copy(toastMessage = noDataMsg) else it }
+                    onResult(0L, false, noDataMsg)
+                    return@launch
+                }
+
+                val reportDetails = StockOpnameReport(
+                    // reportId auto generate
+                    reportName = opnameSessionNameToSave,
+                    startTimeMillis = currentStateValue.sessionStartTimeMillis,
+                    endTimeMillis = System.currentTimeMillis(),
+                    totalItemsExpected = currentStateValue.totalBooksInMaster,
+                    totalItemsFound = currentStateValue.foundBooksInSession, // Ini dari kalkulasi BookMaster
+                    totalItemsMissing = currentStateValue.missingBooksInSession, // Ini dari kalkulasi BookMaster
+                    totalItemsNewOrUnexpected = currentStateValue.newOrUnexpectedBooksCount // Ini dari kalkulasi BookMaster + temporary
+                )
+
+
+                val reportId = bookRepository.saveFullStockOpnameSession(
+                    reportDetails = reportDetails,
+                    itemsInSession = allItemsForReport
+                )
+
+                if (reportId > 0) {
+                    val successMessage = app.getString(R.string.opname_session_saved_successfully, opnameSessionNameToSave)
+                    Log.i("StockOpnameViewModel", successMessage)
+                    _uiState.update { if (it is StockOpnameUiState.Success) it.copy(toastMessage = successMessage) else it }
+                    onResult(reportId, true, successMessage)
+                    startNewOpnameSession() // Reset untuk sesi berikutnya
+                } else {
+                    val failMessage = "Gagal menyimpan sesi opname ke database."
+                    Log.e("StockOpnameViewModel", failMessage)
+                    _uiState.update { if (it is StockOpnameUiState.Success) it.copy(toastMessage = failMessage) else it }
+                    onResult(0L, false, failMessage)
+                }
+
+            } catch (e: Exception) {
+                val errorMsg = "Terjadi kesalahan saat menyimpan: ${e.message}"
+                Log.e("StockOpnameViewModel", "Error saving opname session", e)
+                _uiState.update { if (it is StockOpnameUiState.Success) it.copy(toastMessage = errorMsg) else it }
+                onResult(0L, false, errorMsg)
             }
         }
     }
 
     fun toastMessageShown() {
         _uiState.update { currentState ->
-            if (currentState is UiState.Success && currentState.toastMessage != null) {
+            if (currentState is StockOpnameUiState.Success) {
                 currentState.copy(toastMessage = null)
-            } else if (currentState is UiState.Error) { // Jika ingin kembali ke Initial setelah error toast
-                // UiState.Initial // Atau biarkan Error jika ingin user tahu ada error terakhir
-                currentState // Atau biarkan saja jika Error state punya arti lain
-            } else {
-                currentState
-            }
+            } else currentState
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        Log.d("StockOpnameViewModel", "ViewModel cleared. Releasing SDK resources.")
-        sdkManager.releaseResources()
+        observerJob?.cancel()
+        sdkManager.releaseResources() // Pastikan sdkManager punya fungsi release()
+        Log.d("StockOpnameViewModel", "ViewModel cleared and SDK released.")
     }
 }

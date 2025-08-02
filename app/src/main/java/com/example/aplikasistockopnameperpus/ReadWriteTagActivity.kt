@@ -12,6 +12,7 @@ import com.example.aplikasistockopnameperpus.databinding.ActivityReadWriteTagBin
 import com.example.aplikasistockopnameperpus.fragment.ReadTagFragment
 import com.example.aplikasistockopnameperpus.fragment.WriteTagFragment
 import com.example.aplikasistockopnameperpus.viewmodel.ReadWriteTagViewModel
+import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
 import com.google.android.material.tabs.TabLayoutMediator
 
 class ReadWriteTagActivity : AppCompatActivity() {
@@ -19,6 +20,7 @@ class ReadWriteTagActivity : AppCompatActivity() {
     private lateinit var binding: ActivityReadWriteTagBinding
     private val viewModel: ReadWriteTagViewModel by viewModels()
     private lateinit var myApp: MyApplication
+    private lateinit var sdkManager: ChainwaySDKManager
 
     // Tetap gunakan ini sebagai member kelas
     // Untuk lokalisasi yang lebih baik, isi array ini dengan getString(R.string.xxx)
@@ -33,6 +35,7 @@ class ReadWriteTagActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         myApp = application as MyApplication
+        sdkManager = myApp.sdkManager
 
         setSupportActionBar(binding.toolbarReadWrite)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -41,7 +44,7 @@ class ReadWriteTagActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        if (!myApp.isReaderOpened()) {
+        if (!sdkManager.isDeviceReady()) {
             Toast.makeText(this, "Simulasi: UHF Reader tidak terhubung. Beberapa fitur mungkin tidak berfungsi.", Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(this, "Simulasi: UHF Reader terhubung.", Toast.LENGTH_SHORT).show()

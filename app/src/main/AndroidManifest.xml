@@ -87,6 +87,16 @@
                 android:value=".UhfInitActivity" />
         </activity>
 
+        <activity
+            android:name=".BookTaggingActivity"
+            android:exported="false"
+            android:label="Pair and Write"
+            android:parentActivityName=".UhfInitActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".UhfInitActivity" />
+        </activity>
+
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"

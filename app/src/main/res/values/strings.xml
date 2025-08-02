@@ -51,12 +51,12 @@
     <string name="scan_status_will_be_reset">Status scan akan direset untuk sesi baru.</string>
     <string name="save_and_export_txt">Simpan &amp; Export TXT</string>
     <string name="save_and_export_results">Simpan Data Stock Opname</string>
-    <string name="opname_saved_report_id">Hasil opname disimpan. Report ID: %1$d.</string> <!-- %1$d untuk integer -->
+    <string name="opname_saved_report_id">Hasil opname disimpan. Report ID: %2$s.</string> <!-- %1$d untuk integer -->
     <string name="data_exported_to">Data ditemukan juga diekspor ke: %s</string>
     <string name="no_data_to_export_or_failed">Tidak ada data ditemukan untuk diexport atau export
         gagal.
     </string>
-    <string name="failed_to_save_opname_session">Gagal menyimpan sesi opname.</string>
+    <string name="failed_to_save_opname_session">Gagal menyimpan sesi opname. %1$s</string>
     <string name="save_only">Simpan Saja</string>
     <string name="cancel">Batal</string>
     <string-array name="lock_types_array">
@@ -300,5 +300,53 @@
         <string name="filter_status_hint_label">Filter Status</string>
         <string name="filter_status_hint_actv">Pilih status</string>
     <string name="app_logo_description">Aplikasi Stok Opname</string>>
+        <!-- ... string lainnya ... -->
 
+        <!-- Untuk item yang sudah pernah diproses/discan dalam sesi ini -->
+        <!-- %1$s: Metode Scan (mis. "UHF", "Barcode") -->
+        <!-- %2$s: Identifier (mis. EPC Tag atau Nomor Barcode) -->
+        <!-- %3$s: Judul Buku -->
+        <string name="scan_already_processed">%1$s: Item \'%3$s\' (ID: %2$s) sudah pernah diproses.</string>
+
+        <!-- Untuk item yang berhasil ditemukan di lokasi yang benar -->
+        <!-- %1$s: Metode Scan -->
+        <!-- %2$s: Identifier -->
+        <!-- %3$s: Judul Buku -->
+        <!-- %4$s: Lokasi Aktual Penemuan -->
+        <string name="scan_success_item_found_location">%1$s: Ditemukan! \'%3$s\' (ID: %2$s) di lokasi yang benar: %4$s.</string>
+
+        <!-- Untuk item yang berhasil ditemukan TAPI di lokasi yang salah -->
+        <!-- %1$s: Metode Scan -->
+        <!-- %2$s: Identifier -->
+        <!-- %3$s: Judul Buku -->
+        <!-- %4$s: Lokasi Aktual Penemuan -->
+        <!-- %5$s: Lokasi Seharusnya -->
+        <string name="scan_success_item_misplaced">%1$s: Lokasi Salah! \'%3$s\' (ID: %2$s). Ditemukan di %4$s, seharusnya di %5$s.</string>
+
+        <!-- String lain yang mungkin sudah ada atau Anda butuhkan -->
+        <string name="uhf_scan_stopped">Scan UHF dihentikan.</string>
+        <string name="barcode_scan_stopped">Scan Barcode dihentikan.</string>
+    <string name="opname_session_saved_successfully">Sesi opname \'%1$s\' berhasil disimpan.</string>
+    <string name="no_active_session_to_save">Tidak ada sesi yang dapat disimpan</string>
+    <string name="no_scanned_data_to_save">Tidak ada data untuk disimpan</string>
+    <string name="save_label">Simpan</string>
+    <string name="baca_tunggal">Baca Tunggal</string>
+    <string name="mulai_baca_kontinu">Mulai Baca Kontinu</string>
+    <string name="status_membaca">Status: Membaca...</string>
+    <string name="status_idle">Status: Idle</string>
+    <string name="status_error">Status: Error</string>
+    <string name="status_membaca_target">Membaca target...</string>
+    <string name="status_membaca_tag_target_detail">Status: Membaca tag target...</string>
+    <string name="error_epc_length_exceeded">Panjang EPC melebihi %1$d karakter.</string>
+    <string name="error_read_target_tag_first">Baca tag target terlebih dahulu.</string>
+    <string name="status_target_epc_undefined">Status: Target EPC belum ditentukan.</string>
+    <string name="error_invalid_new_epc_hex_format">Format HEX EPC baru tidak valid.</string>
+    <string name="status_writing_new_epc">Status: Menulis EPC baru...</string>
+    <string name="error_read_target_tag_for_lock">Baca tag target terlebih dahulu untuk operasi kunci.</string>
+    <string name="error_invalid_access_password_for_lock">Format password akses tidak valid untuk mengunci.</string>
+    <string name="status_locking_tag">Status: Mengunci tag...</string>
+    <string name="target_epc_status">Target EPC: %1$s</string>
+    <string name="status_membaca_target_simple">Membaca target...</string> <!-- Sesuaikan jika berbeda dengan status_membaca_target -->
+    <string name="target_epc_not_found_or_failed">Target EPC: Belum ada atau gagal dibaca.</string>
+    <string name="status_prefix">Status: %1$s</string>
 </resources>

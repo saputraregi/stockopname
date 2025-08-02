@@ -11,6 +11,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.aplikasistockopnameperpus.adapter.MenuAdapter
 import com.example.aplikasistockopnameperpus.model.MenuAction
 import com.example.aplikasistockopnameperpus.model.MenuItem
+import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
+import com.example.aplikasistockopnameperpus.MyApplication
+
 
 
 class UhfInitActivity : AppCompatActivity() {
@@ -19,6 +22,7 @@ class UhfInitActivity : AppCompatActivity() {
     private lateinit var menuAdapter: MenuAdapter
     private lateinit var textViewReaderStatus: TextView
     private lateinit var buttonReaderAction: Button // Hanya satu tombol
+    private lateinit var sdkManager: ChainwaySDKManager
 
     // Variabel untuk melacak status koneksi
     private var isReaderConnected: Boolean = false
@@ -30,16 +34,20 @@ class UhfInitActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_uhf_init)
 
-        myApplication = application as MyApplication // Dapatkan instance MyApplication
+        myApplication = application as MyApplication
+
+        // ======== TAMBAHKAN INISIALISASI sdkManager DI SINI ========
+        sdkManager = myApplication.sdkManager // Asumsikan sdkManager adalah properti di MyApplication
+        // atau jika sdkManager adalah instance baru yang dibuat di sini:
+        // sdkManager = ChainwaySDKManager(this) // Tergantung desain Anda
 
         textViewReaderStatus = findViewById(R.id.textViewReaderStatus)
-        buttonReaderAction = findViewById(R.id.buttonReaderAction) // Inisialisasi tombol baru
+        buttonReaderAction = findViewById(R.id.buttonReaderAction)
         recyclerViewMenu = findViewById(R.id.recyclerViewMenu)
 
         setupRecyclerView()
-        setupReaderButton() // Ubah nama fungsi ini
+        setupReaderButton()
 
-        // Set status awal
         updateUIBasedOnConnectionState()
     }
 
@@ -50,7 +58,8 @@ class UhfInitActivity : AppCompatActivity() {
             MenuItem("Report", R.drawable.ic_launcher_background, MenuAction.REPORT),
             MenuItem("Read/Write Tag", R.drawable.ic_launcher_background, MenuAction.READ_WRITE_TAG),
             MenuItem("Radar", R.drawable.ic_launcher_background, MenuAction.RADAR),
-            MenuItem("Setup", R.drawable.ic_launcher_background, MenuAction.SETUP)
+            MenuItem("Setup", R.drawable.ic_launcher_background, MenuAction.SETUP),
+            MenuItem("Pair & Write Tag", R.drawable.ic_launcher_background, MenuAction.PAIRING_WRITE)
         )
         menuAdapter = MenuAdapter(menuItems) { menuAction ->
             handleMenuAction(menuAction)
@@ -123,6 +132,15 @@ class UhfInitActivity : AppCompatActivity() {
                     android.util.Log.e("UhfInitActivity", "Error starting SetupActivity", e)
                 }
             }
+            MenuAction.PAIRING_WRITE -> {
+                try {
+                    val intent = Intent(this, BookTaggingActivity::class.java)
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    showToast("Error: Tidak bisa membuka Pair and Write.")
+                    android.util.Log.e("UhfInitActivity", "Error starting BookTaggingActivity", e)
+                }
+            }
         }
     }
 
@@ -163,7 +181,7 @@ class UhfInitActivity : AppCompatActivity() {
 
         // --- Simulasi Sederhana Tanpa Threading (HANYA UNTUK TESTING UI CEPAT) ---
         //val success = true; // Ganti dengan myApplication.connectReader()
-        val success = myApplication.connectReader() // Gunakan metode dari MyApplication
+        val success = sdkManager.connectDevices() // Gunakan metode dari MyApplication
         if (success) {
             isReaderConnected = true
             showToast("Reader berhasil terhubung.")
@@ -192,7 +210,7 @@ class UhfInitActivity : AppCompatActivity() {
         // }
 
         // --- Simulasi Sederhana Tanpa Threading (HANYA UNTUK TESTING UI CEPAT) ---
-        myApplication.disconnectReader() // Gunakan metode dari MyApplication
+        sdkManager.disconnectDevices() // Gunakan metode dari MyApplication
         isReaderConnected = false
         showToast("Reader berhasil diputuskan.")
         updateUIBasedOnConnectionState()

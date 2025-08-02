@@ -6,5 +6,6 @@ enum class MenuAction {
     REPORT,
     READ_WRITE_TAG,
     RADAR,
-    SETUP
+    SETUP,
+    PAIRING_WRITE,
 }

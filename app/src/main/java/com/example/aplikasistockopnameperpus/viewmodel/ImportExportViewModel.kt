@@ -107,7 +107,7 @@ class ImportExportViewModel(application: Application) : AndroidViewModel(applica
                     booksToImport.forEachIndexed { index, book ->
                         try {
                             // Validasi data buku sebelum insert
-                            if (book.itemCode.isBlank() || book.rfidTagHex.isBlank() || book.title.isBlank()){
+                            if (book.itemCode.isBlank() || book.title.isBlank()){
                                 // Log atau skip item yang tidak valid
                                 System.err.println("Skipping invalid book: ${book.itemCode}")
                             } else {
@@ -239,14 +239,15 @@ class ImportExportViewModel(application: Application) : AndroidViewModel(applica
             fileName?.endsWith(".txt") == true -> FileType.TXT
             else -> {
                 // Coba dari MIME type jika nama file tidak jelas
-                val mimeType = getApplication<Application>().contentResolver.getType(uri)
-                when (mimeType) {
-                    "text/csv", "text/comma-separated-values" -> FileType.CSV
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> FileType.EXCEL_XLSX
-                    "application/vnd.ms-excel" -> FileType.EXCEL_XLS
-                    "text/plain" -> FileType.TXT
-                    else -> null
-                }
+                //val mimeType = getApplication<Application>().contentResolver.getType(uri)
+                //when (mimeType) {
+                //    "text/csv", "text/comma-separated-values" -> FileType.CSV
+                //    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> FileType.EXCEL_XLSX
+                //    "application/vnd.ms-excel" -> FileType.EXCEL_XLS
+                //    "text/plain" -> FileType.TXT
+                //    else -> null
+                //}
+                null
             }
         }
     }

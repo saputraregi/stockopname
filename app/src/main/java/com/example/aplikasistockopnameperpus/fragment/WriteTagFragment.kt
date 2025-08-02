@@ -9,14 +9,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.Toast
-// import androidx.appcompat.app.AlertDialog // Tidak digunakan saat ini, bisa dihapus jika tidak ada rencana
+// import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import com.example.aplikasistockopnameperpus.MyApplication
-// import com.rscja.deviceapi.RFIDWithUHFUART // Akan di-uncomment nanti
+import com.example.aplikasistockopnameperpus.MyApplication // Pastikan import ini benar
+// import com.rscja.deviceapi.RFIDWithUHFUART
 import com.example.aplikasistockopnameperpus.R
 import com.example.aplikasistockopnameperpus.databinding.FragmentWriteTagBinding
 import com.example.aplikasistockopnameperpus.viewmodel.ReadWriteTagViewModel
+import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
 import java.nio.charset.StandardCharsets
 
 class WriteTagFragment : Fragment() {
@@ -25,7 +26,8 @@ class WriteTagFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ReadWriteTagViewModel by activityViewModels()
-    private var currentTargetEpcForOperations: String? = null // Diupdate oleh viewModel.targetTagEpc
+    private var currentTargetEpcForOperations: String? = null
+    private lateinit var sdkManager: ChainwaySDKManager // Tetap lateinit
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,9 +40,16 @@ class WriteTagFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // ===== INISIALISASI sdkManager DI SINI =====
+        // 1. Dapatkan instance MyApplication
         val myApp = requireActivity().application as MyApplication
-        if (!myApp.isReaderOpened()) {
-            Toast.makeText(context, "Simulasi: Reader tidak aktif. Mode tulis mungkin terbatas.", Toast.LENGTH_LONG).show()
+        // 2. Akses properti sdkManager dari instance MyApplication
+        sdkManager = myApp.sdkManager // Pastikan 'sdkManager' adalah nama properti yang benar di MyApplication Anda
+
+        // ===== LANJUTKAN DENGAN KODE ANDA YANG LAIN =====
+        // Sekarang sdkManager sudah diinisialisasi
+        if (!sdkManager.connectDevices()) {
+            Toast.makeText(requireContext(), "Reader tidak aktif. Mode tulis mungkin terbatas.", Toast.LENGTH_LONG).show()
             disableWriteUI(true)
         } else {
             disableWriteUI(false) // Pastikan UI enable jika reader aktif
@@ -54,9 +63,9 @@ class WriteTagFragment : Fragment() {
 
     private fun disableWriteUI(disabled: Boolean) {
         binding.buttonReadTargetTag.isEnabled = !disabled
-        binding.textInputLayoutNewEpcHex.isEnabled = !disabled // Enable/disable TextInputLayout
+        binding.textInputLayoutNewEpcHex.isEnabled = !disabled
         binding.editTextNewEpcHex.isEnabled = !disabled
-        binding.textInputLayoutAccessPassword.isEnabled = !disabled // Enable/disable TextInputLayout
+        binding.textInputLayoutAccessPassword.isEnabled = !disabled
         binding.editTextAccessPassword.isEnabled = !disabled
         binding.spinnerLockType.isEnabled = !disabled
         binding.buttonWriteNewEpc.isEnabled = !disabled
@@ -65,8 +74,8 @@ class WriteTagFragment : Fragment() {
 
     private fun setupListeners() {
         binding.buttonReadTargetTag.setOnClickListener {
-            binding.editTextCurrentEpc.setText("Membaca...")
-            binding.textViewWriteStatus.text = "Status: Membaca tag target..."
+            binding.editTextCurrentEpc.setText(getString(R.string.status_membaca_target)) // Gunakan string resource
+            binding.textViewWriteStatus.text = getString(R.string.status_membaca_tag_target_detail) // Gunakan string resource
             viewModel.readTargetTagForWrite()
         }
 
@@ -81,8 +90,8 @@ class WriteTagFragment : Fragment() {
                 previewHexToAscii(hexInput)
                 if (hexInput.isNotEmpty() && (hexInput.length % 4 != 0 || !hexInput.all { it.isDigit() || it in 'A'..'F' })) {
                     binding.textInputLayoutNewEpcHex.error = getString(R.string.error_invalid_hex_format_multiple_of_4)
-                } else if (hexInput.length > binding.textInputLayoutNewEpcHex.counterMaxLength) { // Validasi tambahan jika perlu
-                    binding.textInputLayoutNewEpcHex.error = "Panjang EPC melebihi ${binding.textInputLayoutNewEpcHex.counterMaxLength} karakter."
+                } else if (hexInput.length > binding.textInputLayoutNewEpcHex.counterMaxLength) {
+                    binding.textInputLayoutNewEpcHex.error = getString(R.string.error_epc_length_exceeded, binding.textInputLayoutNewEpcHex.counterMaxLength) // Gunakan string resource
                 }
                 else {
                     binding.textInputLayoutNewEpcHex.error = null
@@ -106,124 +115,88 @@ class WriteTagFragment : Fragment() {
 
     private fun attemptWriteNewEpc() {
         val newEpcHex = binding.editTextNewEpcHex.text.toString().uppercase()
-        val accessPassword = binding.editTextAccessPassword.text.toString().uppercase() // Umumnya diperlukan untuk menulis
+        val accessPassword = binding.editTextAccessPassword.text.toString().uppercase()
 
-        if (currentTargetEpcForOperations == null || currentTargetEpcForOperations == "Membaca target...") {
-            Toast.makeText(context, "Baca tag target terlebih dahulu.", Toast.LENGTH_SHORT).show()
-            binding.textViewWriteStatus.text = "Status: Target EPC belum ditentukan."
+        if (currentTargetEpcForOperations == null || currentTargetEpcForOperations == getString(R.string.status_membaca_target)) {
+            Toast.makeText(requireContext(), getString(R.string.error_read_target_tag_first), Toast.LENGTH_SHORT).show()
+            binding.textViewWriteStatus.text = getString(R.string.status_target_epc_undefined)
             return
         }
 
         if (newEpcHex.isEmpty() || newEpcHex.length % 4 != 0 || !newEpcHex.all { it.isDigit() || it in 'A'..'F' }) {
             binding.textInputLayoutNewEpcHex.error = getString(R.string.error_invalid_hex_format_multiple_of_4)
-            Toast.makeText(context, "Format HEX EPC baru tidak valid.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), getString(R.string.error_invalid_new_epc_hex_format), Toast.LENGTH_SHORT).show()
             return
         } else {
             binding.textInputLayoutNewEpcHex.error = null
         }
 
-        // Validasi password opsional di sini jika selalu dibutuhkan untuk write,
-        // tapi umumnya SDK akan menanganinya jika diperlukan.
-        // if (accessPassword.length != 8 || !accessPassword.all { it.isDigit() || it in 'A'..'F' }) {
-        //     binding.textInputLayoutAccessPassword.error = getString(R.string.error_invalid_password_format_8_hex)
-        // Toast.makeText(context, "Format password akses tidak valid.", Toast.LENGTH_SHORT).show()
-        // return
-        // } else {
-        // binding.textInputLayoutAccessPassword.error = null
-        // }
-
-
-        binding.textViewWriteStatus.text = "Status: Menulis EPC baru..."
+        binding.textViewWriteStatus.text = getString(R.string.status_writing_new_epc)
         viewModel.writeEpcToTag(currentTargetEpcForOperations, newEpcHex, accessPassword)
     }
 
     private fun attemptLockTag() {
         val accessPassword = binding.editTextAccessPassword.text.toString().uppercase()
         val selectedLockTypePosition = binding.spinnerLockType.selectedItemPosition
-        // val selectedLockTypeText = binding.spinnerLockType.selectedItem.toString() // Untuk logging
 
-        if (currentTargetEpcForOperations == null || currentTargetEpcForOperations == "Membaca target...") {
-            Toast.makeText(context, "Baca tag target terlebih dahulu untuk operasi kunci.", Toast.LENGTH_SHORT).show()
-            binding.textViewWriteStatus.text = "Status: Target EPC belum ditentukan."
+        if (currentTargetEpcForOperations == null || currentTargetEpcForOperations == getString(R.string.status_membaca_target)) {
+            Toast.makeText(requireContext(), getString(R.string.error_read_target_tag_for_lock), Toast.LENGTH_SHORT).show()
+            binding.textViewWriteStatus.text = getString(R.string.status_target_epc_undefined)
             return
         }
 
         if (accessPassword.length != 8 || !accessPassword.all { it.isDigit() || it in 'A'..'F' }) {
             binding.textInputLayoutAccessPassword.error = getString(R.string.error_invalid_password_format_8_hex)
-            Toast.makeText(context, "Format password akses tidak valid untuk mengunci.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), getString(R.string.error_invalid_access_password_for_lock), Toast.LENGTH_SHORT).show()
             return
         } else {
             binding.textInputLayoutAccessPassword.error = null
         }
 
-        // TODO SDK: Konversi selectedLockTypePosition ke tipe enum yang sesuai dengan SDK Chainway
-        // Contoh:
-        // val lockMem: RFIDWithUHFUART.LockMemMode
-        // val lockMode: RFIDWithUHFUART.LockMode
-        // when (selectedLockTypePosition) {
-        // 0 -> { /* UNLOCK */ lockMem = ...; lockMode = RFIDWithUHFUART.LockMode.UNLOCK; }
-        // 1 -> { /* PERMAUNLOCK */ lockMem = ...; lockMode = RFIDWithUHFUART.LockMode.PERMAUNLOCK; }
-        // 2 -> { /* LOCK */ lockMem = ...; lockMode = RFIDWithUHFUART.LockMode.LOCK; }
-        // 3 -> { /* Kunci Memori EPC */ lockMem = RFIDWithUHFUART.LockMemMode.EPC_MEM; lockMode = ...; }
-        // ... dst
-        // default -> {
-        // Toast.makeText(context, "Tipe kunci tidak valid.", Toast.LENGTH_SHORT).show()
-        // return
-        // }
-        // }
-
         Log.d("WriteTagFragment", "Attempting to lock tag. Target: $currentTargetEpcForOperations, PW: $accessPassword, LockTypePos: $selectedLockTypePosition")
-        binding.textViewWriteStatus.text = "Status: Mengunci tag..."
-        // viewModel.lockTagMemory(currentTargetEpcForOperations, accessPassword, lockMem, lockMode) // Panggil dengan parameter SDK
-        viewModel.lockTagMemory(currentTargetEpcForOperations, accessPassword) // Untuk simulasi saat ini
+        binding.textViewWriteStatus.text = getString(R.string.status_locking_tag)
+        viewModel.lockTagMemory(currentTargetEpcForOperations, accessPassword) // Sesuaikan jika parameter SDK sudah ada
 
     }
 
 
     private fun setupSpinner() {
-        // ArrayAdapter sudah di-set dari XML android:entries="@array/lock_types_array"
-        // Anda bisa menggunakan ArrayAdapter kustom jika ingin tampilan item spinner yang berbeda
         binding.spinnerLockType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedValue = parent?.getItemAtPosition(position).toString()
                 Log.d("WriteTagFragment", "Spinner item selected: position $position, value: $selectedValue")
-                // Aksi lain jika diperlukan saat item dipilih
             }
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                // Tidak ada aksi
-            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
 
     private fun observeViewModel() {
         viewModel.targetTagEpc.observe(viewLifecycleOwner) { epc ->
-            currentTargetEpcForOperations = epc // Simpan EPC target saat ini
+            currentTargetEpcForOperations = epc
             binding.editTextCurrentEpc.setText(epc ?: getString(R.string.no_tag_found_placeholder))
-            if (epc != null && epc != "Membaca target...") {
-                binding.textViewWriteStatus.text = "Target EPC: $epc"
-            } else if (epc == null && binding.editTextCurrentEpc.text.toString() != "Membaca...") {
-                binding.textViewWriteStatus.text = "Target EPC: Belum ada atau gagal dibaca."
+            if (epc != null && epc != getString(R.string.status_membaca_target)) {
+                binding.textViewWriteStatus.text = getString(R.string.target_epc_status, epc)
+            } else if (epc == null && binding.editTextCurrentEpc.text.toString() != getString(R.string.status_membaca_target_simple)) { // "Membaca..." beda dengan "Membaca target..."
+                binding.textViewWriteStatus.text = getString(R.string.target_epc_not_found_or_failed)
             }
         }
 
         viewModel.writeStatus.observe(viewLifecycleOwner) { result ->
             val (success, message) = result
             val displayMessage = message ?: (if (success) getString(R.string.operation_successful) else getString(R.string.operation_failed))
-            Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
-            binding.textViewWriteStatus.text = "Status: $displayMessage"
+            Toast.makeText(requireContext(), displayMessage, Toast.LENGTH_LONG).show()
+            binding.textViewWriteStatus.text = getString(R.string.status_prefix, displayMessage)
             if (success) {
                 binding.editTextNewEpcHex.text?.clear()
-                previewHexToAscii("") // Kosongkan preview juga
-                // Secara opsional, baca ulang tag target untuk mengonfirmasi EPC baru
-                // viewModel.readTargetTagForWrite()
+                previewHexToAscii("")
             }
         }
 
         viewModel.lockStatus.observe(viewLifecycleOwner) { result ->
             val (success, message) = result
             val displayMessage = message ?: (if (success) getString(R.string.lock_operation_successful) else getString(R.string.lock_operation_failed))
-            Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
-            binding.textViewWriteStatus.text = "Status: $displayMessage"
+            Toast.makeText(requireContext(), displayMessage, Toast.LENGTH_LONG).show()
+            binding.textViewWriteStatus.text = getString(R.string.status_prefix, displayMessage)
         }
     }
 
@@ -232,7 +205,6 @@ class WriteTagFragment : Fragment() {
             binding.textViewAsciiPreviewValue.text = ""
             return
         }
-        // Validasi dasar, pastikan genap dan hanya hex char
         if (hexString.length % 2 != 0 || !hexString.all { it.isDigit() || it in 'A'..'F' || it in 'a'..'f' }) {
             binding.textViewAsciiPreviewValue.text = getString(R.string.invalid_hex_for_ascii_preview)
             return

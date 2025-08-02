@@ -8,15 +8,15 @@
     android:padding="12dp"
     android:background="?android:attr/selectableItemBackground">
 
-    <!-- Anda bisa tetap menggunakan ImageView jika mau, dan atur srcCompat di ViewHolder -->
     <ImageView
-        android:id="@+id/imageViewScanStatusIcon"
+        android:id="@+id/imageViewStatusIcon"
         android:layout_width="24dp"
         android:layout_height="24dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/textViewItemCode"
         app:layout_constraintBottom_toBottomOf="@+id/textViewBookLocation"
-        tools:srcCompat="@drawable/ic_check_circle_green" />
+        tools:srcCompat="@drawable/ic_help_outline_gray" />
+    <!-- Default icon, akan diubah di adapter -->
 
     <TextView
         android:id="@+id/textViewItemCode"
@@ -25,7 +25,7 @@
         android:layout_marginStart="12dp"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:layout_constraintStart_toEndOf="@id/imageViewScanStatusIcon"
+        app:layout_constraintStart_toEndOf="@id/imageViewStatusIcon"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:text="BK-00123"/>
@@ -64,28 +64,43 @@
         app:layout_constraintEnd_toEndOf="parent"
         tools:text="EPC: E200ABCD1234"/>
 
+    <!-- TextView untuk Status Pairing RFID -->
+    <TextView
+        android:id="@+id/textViewRfidPairingStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="12sp"
+        android:textStyle="italic"
+        app:layout_constraintStart_toStartOf="@id/textViewItemCode"
+        app:layout_constraintTop_toBottomOf="@id/textViewRfidTag"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:text="Status RFID: Belum Ditag"
+        tools:textColor="@color/orange_needs_attention"/>
+
     <TextView
         android:id="@+id/textViewScanStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:textSize="13sp"
-        android:textStyle="italic"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="@id/textViewItemCode"
-        app:layout_constraintTop_toBottomOf="@id/textViewRfidTag"
+        app:layout_constraintTop_toBottomOf="@id/textViewRfidPairingStatus"
         tools:text="DITEMUKAN"
         tools:textColor="@color/green_found"/>
 
     <TextView
         android:id="@+id/textViewScanTime"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:textSize="11sp"
         android:layout_marginStart="8dp"
         android:visibility="gone"
         app:layout_constraintStart_toEndOf="@id/textViewScanStatus"
         app:layout_constraintBaseline_toBaselineOf="@id/textViewScanStatus"
+        app:layout_constraintEnd_toEndOf="parent"
         tools:visibility="visible"
-        tools:text="10:30:45"/>
+        tools:text="Terakhir dilihat: 10:30:45"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

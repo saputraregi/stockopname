@@ -6,15 +6,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.compose.ui.semantics.text
+// import androidx.compose.ui.semantics.text // Hapus jika tidak digunakan
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.aplikasistockopnameperpus.MyApplication
+import com.example.aplikasistockopnameperpus.MyApplication // Pastikan import ini benar
 import com.example.aplikasistockopnameperpus.R
+import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
 import com.example.aplikasistockopnameperpus.databinding.FragmentReadTagBinding
 import com.example.aplikasistockopnameperpus.viewmodel.ReadWriteTagViewModel
+
 
 class ReadTagFragment : Fragment() {
 
@@ -23,6 +25,7 @@ class ReadTagFragment : Fragment() {
 
     private val viewModel: ReadWriteTagViewModel by activityViewModels()
     private lateinit var epcListAdapter: MySimpleStringAdapter // Adapter untuk RecyclerView
+    private lateinit var sdkManager: ChainwaySDKManager // Tetap lateinit
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,12 +38,19 @@ class ReadTagFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // ===== INISIALISASI sdkManager DI SINI =====
+        // 1. Dapatkan instance MyApplication
+        val myApp = requireActivity().application as MyApplication
+        // 2. Akses properti sdkManager dari instance MyApplication
+        sdkManager = myApp.sdkManager // Pastikan 'sdkManager' adalah nama properti yang benar di MyApplication Anda
+
+        // ===== LANJUTKAN DENGAN KODE ANDA YANG LAIN =====
         setupUI()
         observeViewModel()
 
-        val myApp = requireActivity().application as MyApplication
-        if (!myApp.isReaderOpened()) {
-            Toast.makeText(context, "Simulasi: Reader tidak aktif. Mode baca mungkin terbatas.", Toast.LENGTH_LONG).show()
+        // Sekarang sdkManager sudah diinisialisasi, Anda bisa menggunakannya
+        if (!sdkManager.connectDevices()) {
+            Toast.makeText(requireContext(), "Reader tidak aktif. Mode baca mungkin terbatas.", Toast.LENGTH_LONG).show()
             // binding.buttonStartRead.isEnabled = false // Bisa diatur berdasarkan status reader
         }
     }
@@ -60,26 +70,26 @@ class ReadTagFragment : Fragment() {
                     binding.textViewListOfEpcsLabel.visibility = View.GONE
                     binding.recyclerViewReadEpcs.visibility = View.GONE
                     binding.buttonStopRead.visibility = View.GONE
-                    binding.buttonStartRead.text = "Baca Tunggal"
+                    binding.buttonStartRead.text = getString(R.string.baca_tunggal) // Gunakan string resource
                 }
                 R.id.radioButtonContinuousRead -> {
                     binding.textViewListOfEpcsLabel.visibility = View.VISIBLE
                     binding.recyclerViewReadEpcs.visibility = View.VISIBLE
                     binding.buttonStopRead.visibility = View.VISIBLE
-                    binding.buttonStartRead.text = "Mulai Baca Kontinu"
+                    binding.buttonStartRead.text = getString(R.string.mulai_baca_kontinu) // Gunakan string resource
                 }
             }
         }
         // Atur default
-        binding.radioButtonContinuousRead.isChecked = true // Atau single read default
+        binding.radioButtonContinuousRead.isChecked = true
 
 
         binding.buttonStartRead.setOnClickListener {
             // Cek lagi status reader sebelum memulai (opsional, karena ViewModel juga cek)
-            // val myApp = requireActivity().application as MyApplication
-            // if (!myApp.isReaderOpened()) {
-            // Toast.makeText(context, "Simulasi: Hubungkan reader terlebih dahulu.", Toast.LENGTH_SHORT).show()
-            // return@setOnClickListener
+            // Anda bisa menggunakan instance sdkManager yang sudah diinisialisasi di sini jika perlu
+            // if (!sdkManager.isReaderOpened()) { // Ganti dengan metode yang sesuai dari SDK Anda
+            //     Toast.makeText(requireContext(), "Hubungkan reader terlebih dahulu.", Toast.LENGTH_SHORT).show()
+            //     return@setOnClickListener
             // }
             val isContinuous = binding.radioButtonContinuousRead.isChecked
             viewModel.startReading(isContinuous)
@@ -91,12 +101,13 @@ class ReadTagFragment : Fragment() {
 
         binding.buttonClearList.setOnClickListener {
             epcListAdapter.clearItems()
-            viewModel.continuousEpcList.value?.let { current ->
-                if (current.isNotEmpty()) {
-                    // Jika ingin ViewModel juga tahu list di-clear dari UI
-                    // viewModel.clearContinuousList() // Anda perlu menambahkan fungsi ini di ViewModel
-                }
-            }
+            // viewModel.continuousEpcList.value?.let { current ->
+            //     if (current.isNotEmpty()) {
+            //         // Jika ingin ViewModel juga tahu list di-clear dari UI
+            //         // viewModel.clearContinuousList() // Anda perlu menambahkan fungsi ini di ViewModel
+            //     }
+            // }
+            viewModel.clearContinuousListFromUI() // Panggil metode ViewModel jika ada
             binding.textViewLastEpcValue.text = "" // Juga hapus EPC terakhir
         }
     }
@@ -107,7 +118,8 @@ class ReadTagFragment : Fragment() {
         }
 
         viewModel.continuousEpcList.observe(viewLifecycleOwner) { epcSet ->
-            epcListAdapter.updateItems(epcSet.toList().sortedDescending()) // Tampilkan yang terbaru di atas
+            // Pastikan epcSet tidak null sebelum diolah lebih lanjut
+            epcListAdapter.updateItems(epcSet?.toList()?.sortedDescending() ?: emptyList()) // Tampilkan yang terbaru di atas
         }
 
         viewModel.isReadingContinuous.observe(viewLifecycleOwner) { isReading ->
@@ -119,13 +131,13 @@ class ReadTagFragment : Fragment() {
             }
 
             if (isReading) {
-                binding.textViewStatus.text = "Status: Membaca..."
-                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorScanning, null))
+                binding.textViewStatus.text = getString(R.string.status_membaca) // Gunakan string resource
+                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorScanning, requireActivity().theme))
             } else {
-                binding.textViewStatus.text = "Status: Idle"
-                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorIdle, null))
+                binding.textViewStatus.text = getString(R.string.status_idle) // Gunakan string resource
+                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorIdle, requireActivity().theme))
                 // Jangan hapus text jika sudah ada hasil pembacaan tunggal
-                if (binding.textViewLastEpcValue.text == "Membaca...") {
+                if (binding.textViewLastEpcValue.text == getString(R.string.status_membaca)) { // Bandingkan dengan string resource
                     binding.textViewLastEpcValue.text = ""
                 }
             }
@@ -133,9 +145,9 @@ class ReadTagFragment : Fragment() {
 
         viewModel.readError.observe(viewLifecycleOwner) { errorMsg ->
             errorMsg?.let {
-                Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-                binding.textViewStatus.text = "Status: Error"
-                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorError, null))
+                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+                binding.textViewStatus.text = getString(R.string.status_error) // Gunakan string resource
+                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorError, requireActivity().theme))
             }
         }
     }
@@ -143,6 +155,10 @@ class ReadTagFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         viewModel.stopContinuousReading() // Pastikan berhenti saat fragment tidak aktif
+        // Pertimbangkan untuk memanggil sdkManager.disconnectDevices() atau metode serupa di sini
+        // if (::sdkManager.isInitialized) { // Cek apakah sudah diinisialisasi sebelum digunakan
+        //     sdkManager.disconnectDevices()
+        // }
     }
 
     override fun onDestroyView() {
@@ -176,13 +192,24 @@ class ReadTagFragment : Fragment() {
         override fun getItemCount() = items.size
 
         fun updateItems(newItems: List<String>) {
+            // Cara update yang lebih aman dan efisien dengan DiffUtil direkomendasikan untuk list besar
+            // Namun untuk kesederhanaan, kita akan retain cara lama dengan sedikit perbaikan
             val oldSize = items.size
             items.clear()
-            notifyItemRangeRemoved(0, oldSize)
             items.addAll(newItems)
-            notifyItemRangeInserted(0, newItems.size)
-            // Atau gunakan DiffUtil untuk performa lebih baik pada list besar
+            if (oldSize > newItems.size) {
+                notifyItemRangeRemoved(newItems.size, oldSize - newItems.size)
+            }
+            if (newItems.size > oldSize) {
+                notifyItemRangeInserted(oldSize, newItems.size - oldSize)
+            }
+            // Notifikasi untuk item yang mungkin berubah kontennya
+            val commonSize = minOf(oldSize, newItems.size)
+            if (commonSize > 0) {
+                notifyItemRangeChanged(0, commonSize)
+            }
         }
+
 
         fun clearItems() {
             val oldSize = items.size
