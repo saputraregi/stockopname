@@ -9,7 +9,7 @@ import java.io.InputStream
 sealed class ParseResult {
     data class Success(val books: List<BookMaster>, val warnings: List<String> = emptyList()) : ParseResult()
     data class Error(val errorMessage: String, val lineNumber: Int? = null) : ParseResult()
-    object InvalidFormat : ParseResult() // Jika format file tidak sesuai harapan
+    data class InvalidFormat(val message: String) : ParseResult() // Tambahkan baris ini
 }
 
 /**

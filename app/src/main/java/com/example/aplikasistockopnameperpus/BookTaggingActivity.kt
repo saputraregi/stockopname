@@ -11,9 +11,9 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.aplikasistockopnameperpus.R // Pastikan R diimport dengan benar
-import com.example.aplikasistockopnameperpus.databinding.ActivityBookTaggingBinding // Import ViewBinding
-import com.example.aplikasistockopnameperpus.MyApplication // Asumsi untuk akses Repository/SDK Manager
+import com.example.aplikasistockopnameperpus.data.database.PairingStatus // <-- IMPORT PairingStatus
+import com.example.aplikasistockopnameperpus.databinding.ActivityBookTaggingBinding
+import com.example.aplikasistockopnameperpus.MyApplication
 import com.example.aplikasistockopnameperpus.data.database.BookMaster
 import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
 import com.example.aplikasistockopnameperpus.viewmodel.BookTaggingViewModel
@@ -24,12 +24,10 @@ class BookTaggingActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityBookTaggingBinding
     private val viewModel: BookTaggingViewModel by viewModels {
-        // Anda PERLU ViewModelFactory untuk meng-inject dependensi
-        // Ini adalah contoh sederhana, sesuaikan dengan implementasi factory Anda
         BookTaggingViewModelFactory(
             application,
-            (application as MyApplication).bookRepository, // Asumsi akses dari Application class
-            (application as MyApplication).sdkManager    // Asumsi akses dari Application class
+            (application as MyApplication).bookRepository,
+            (application as MyApplication).sdkManager
         )
     }
 
@@ -41,8 +39,7 @@ class BookTaggingActivity : AppCompatActivity() {
         setupUIListeners()
         observeViewModel()
 
-        // Setel status awal UI
-        viewModel.clearProcessAndPrepareForNext() // Memastikan state awal bersih
+        viewModel.clearProcessAndPrepareForNext()
     }
 
     private fun setupUIListeners() {
@@ -50,17 +47,20 @@ class BookTaggingActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                // Tombol search diaktifkan jika ada teks
-                // Namun, pencarian otomatis mungkin tidak diinginkan, jadi kita cari via tombol
-                // Jika ingin pencarian otomatis setelah delay, implementasikan di sini
+                // Tombol search bisa diaktifkan/dinonaktifkan berdasarkan input
+                // binding.buttonSearchManual.isEnabled = !s.isNullOrBlank() // Jika ada tombol search manual
             }
         })
 
-        // Listener untuk tombol Search manual (jika ada, atau kita langsung cari saat barcode scan)
-        // Jika tidak ada tombol search khusus, fungsi searchBookByItemCode dipanggil
-        // setelah scan barcode atau setelah enter di EditText.
-        // Untuk sekarang, kita asumsikan pencarian dipicu oleh scan atau setelah user selesai mengetik
-        // dan mungkin menekan tombol 'Enter' pada keyboard (tidak dihandle di sini secara eksplisit).
+        // Jika Anda memiliki tombol search manual:
+        // binding.buttonSearchManual.setOnClickListener {
+        //     val itemCode = binding.editTextItemCode.text.toString()
+        //     if (itemCode.isNotBlank()) {
+        //         viewModel.searchBookByItemCode(itemCode)
+        //     } else {
+        //         Toast.makeText(this, "Masukkan kode item", Toast.LENGTH_SHORT).show()
+        //     }
+        // }
 
         binding.buttonScanBarcode.setOnClickListener {
             viewModel.triggerBarcodeScan()
@@ -72,7 +72,7 @@ class BookTaggingActivity : AppCompatActivity() {
 
         binding.buttonClear.setOnClickListener {
             viewModel.clearProcessAndPrepareForNext()
-            binding.editTextItemCode.text = null // Bersihkan juga input field
+            binding.editTextItemCode.text = null
             binding.editTextItemCode.requestFocus()
         }
     }
@@ -84,8 +84,11 @@ class BookTaggingActivity : AppCompatActivity() {
 
         viewModel.currentBook.observe(this) { book ->
             displayBookDetails(book)
-            // Tombol tagging hanya aktif jika buku ditemukan dan siap ditag atau sudah ditag (untuk re-tag)
-            binding.buttonStartTagging.isEnabled = book != null
+            // Tombol tagging diaktifkan jika buku ditemukan dan siap ditag/retag,
+            // dan tidak sedang dalam proses.
+            binding.buttonStartTagging.isEnabled = book != null &&
+                    (viewModel.taggingState.value == TaggingState.BOOK_FOUND_UNTAGGED ||
+                            viewModel.taggingState.value == TaggingState.BOOK_FOUND_ALREADY_TAGGED)
         }
 
         viewModel.scannedEpcDuringProcess.observe(this) { epc ->
@@ -96,6 +99,7 @@ class BookTaggingActivity : AppCompatActivity() {
             } else {
                 binding.textViewScannedEpcLabel.visibility = View.GONE
                 binding.textViewScannedEpcValue.visibility = View.GONE
+                binding.textViewScannedEpcValue.text = "" // Bersihkan teks jika null
             }
         }
 
@@ -104,68 +108,87 @@ class BookTaggingActivity : AppCompatActivity() {
             if (message != null && (
                         message.contains("Error", ignoreCase = true) ||
                                 message.contains("Gagal", ignoreCase = true) ||
-                                message.contains("tidak ditemukan", ignoreCase = true)
+                                message.contains("tidak ditemukan", ignoreCase = true) ||
+                                message.contains("Timeout", ignoreCase = true)
                         )
             ) {
-                // Tampilkan Toast untuk error agar lebih terlihat
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show()
             }
         }
 
         viewModel.isLoading.observe(this) { isLoading ->
             binding.progressBarTagging.visibility = if (isLoading) View.VISIBLE else View.GONE
-            // Disable interaksi UI saat loading
             binding.editTextItemCode.isEnabled = !isLoading
             binding.buttonScanBarcode.isEnabled = !isLoading
-            // binding.buttonStartTagging.isEnabled HANYA jika buku ada DAN tidak loading
+            // Penanganan isEnabled untuk buttonStartTagging lebih baik di observe currentBook dan taggingState
             binding.buttonClear.isEnabled = !isLoading
         }
     }
 
     private fun updateUIBasedOnTaggingState(state: TaggingState?) {
         Log.d("BookTaggingActivity", "Updating UI for state: $state")
+
+        // Default enable/disable state
+        binding.editTextItemCode.isEnabled = true
+        binding.buttonScanBarcode.isEnabled = true
+        binding.buttonStartTagging.isEnabled = false // Default disabled, diaktifkan secara spesifik
+
         when (state) {
             TaggingState.IDLE -> {
                 binding.layoutBookDetails.visibility = View.GONE
-                binding.buttonStartTagging.isEnabled = false
                 binding.textViewScannedEpcLabel.visibility = View.GONE
                 binding.textViewScannedEpcValue.visibility = View.GONE
-                binding.editTextItemCode.isEnabled = true
-                binding.buttonScanBarcode.isEnabled = true
             }
             TaggingState.BOOK_FOUND_UNTAGGED, TaggingState.BOOK_FOUND_ALREADY_TAGGED -> {
                 binding.layoutBookDetails.visibility = View.VISIBLE
-                binding.buttonStartTagging.isEnabled = true
-                binding.editTextItemCode.isEnabled = false // Disable input setelah buku ditemukan
+                binding.buttonStartTagging.isEnabled = true // Aktifkan jika buku ditemukan
+                binding.editTextItemCode.isEnabled = false
                 binding.buttonScanBarcode.isEnabled = false
             }
             TaggingState.AWAITING_TAG_PLACEMENT,
             TaggingState.WRITING_EPC,
             TaggingState.READING_TID,
             TaggingState.SAVING_TO_DB -> {
-                binding.buttonStartTagging.isEnabled = false // Disable selama proses
+                binding.layoutBookDetails.visibility = View.VISIBLE // Detail buku tetap terlihat
+                binding.buttonStartTagging.isEnabled = false
                 binding.editTextItemCode.isEnabled = false
                 binding.buttonScanBarcode.isEnabled = false
             }
             TaggingState.PROCESS_SUCCESS -> {
-                binding.buttonStartTagging.isEnabled = false // Setelah sukses, user harus clear/next
-                binding.editTextItemCode.isEnabled = true // Atau false sampai di-clear? Tergantung flow
-                binding.buttonScanBarcode.isEnabled = true
-                Toast.makeText(this, "Penandaan Buku Berhasil!", Toast.LENGTH_LONG).show()
+                binding.layoutBookDetails.visibility = View.VISIBLE // Detail buku tetap terlihat
+                binding.buttonStartTagging.isEnabled = false // Nonaktifkan setelah sukses, user harus clear
+                // binding.editTextItemCode.isEnabled = true // Bisa input baru
+                // binding.buttonScanBarcode.isEnabled = true // Bisa scan baru
+                Toast.makeText(this, "Proses Penandaan Buku Berhasil!", Toast.LENGTH_LONG).show()
             }
-            TaggingState.PROCESS_FAILED, TaggingState.ERROR_BOOK_NOT_FOUND, TaggingState.ERROR_SDK -> {
-                binding.buttonStartTagging.isEnabled = viewModel.currentBook.value != null // Aktif jika buku ada, agar bisa coba lagi
-                binding.editTextItemCode.isEnabled = true // Boleh input baru jika gagal
-                binding.buttonScanBarcode.isEnabled = true
+            TaggingState.PROCESS_FAILED,
+            TaggingState.ERROR_BOOK_NOT_FOUND,
+            TaggingState.ERROR_SDK,
+            TaggingState.ERROR_CONVERSION -> {
+                // Jika buku ada, tombol tagging bisa diaktifkan untuk mencoba lagi
+                binding.buttonStartTagging.isEnabled = viewModel.currentBook.value != null
+                if (state == TaggingState.ERROR_BOOK_NOT_FOUND) {
+                    binding.layoutBookDetails.visibility = View.GONE
+                } else {
+                    binding.layoutBookDetails.visibility = View.VISIBLE
+                }
             }
             null -> {
-                // Handle null state if necessary, e.g., revert to IDLE
                 binding.layoutBookDetails.visibility = View.GONE
-                binding.buttonStartTagging.isEnabled = false
+                binding.textViewScannedEpcLabel.visibility = View.GONE
+                binding.textViewScannedEpcValue.visibility = View.GONE
             }
         }
-        // Update loading state juga, karena taggingState berubah bisa jadi loading selesai/mulai
-        binding.progressBarTagging.visibility = if (viewModel.isLoading.value == true) View.VISIBLE else View.GONE
+        // Pastikan loading state juga diperbarui karena taggingState bisa mempengaruhi visibilitas progress bar
+        if (viewModel.isLoading.value == false &&
+            state != TaggingState.WRITING_EPC &&
+            state != TaggingState.READING_TID &&
+            state != TaggingState.SAVING_TO_DB &&
+            state != TaggingState.AWAITING_TAG_PLACEMENT) {
+            binding.progressBarTagging.visibility = View.GONE
+        } else if (viewModel.isLoading.value == true) {
+            binding.progressBarTagging.visibility = View.VISIBLE
+        }
     }
 
 
@@ -173,11 +196,24 @@ class BookTaggingActivity : AppCompatActivity() {
         if (book != null) {
             binding.layoutBookDetails.visibility = View.VISIBLE
             binding.textViewBookTitle.text = book.title
-            binding.textViewBookAuthor.text = book.author ?: "N/A"
-            binding.textViewCurrentRfidStatus.text = book.rfidPairingStatus ?: "BELUM_DITAG"
+            //binding.textViewBookAuthor.text = book.author ?: "N/A"
+
+            // Menggunakan enum PairingStatus untuk logika
+            val statusText = when (book.pairingStatus) {
+                PairingStatus.NOT_PAIRED -> "BELUM DITAG"
+                PairingStatus.PAIRING_PENDING -> "PAIRING DITUNDA" // Sesuaikan dengan arti di aplikasi Anda
+                PairingStatus.PAIRED_WRITE_PENDING -> "MENUNGGU TULIS EPC"
+                PairingStatus.PAIRED_WRITE_SUCCESS -> "BERHASIL DITAG"
+                PairingStatus.PAIRED_WRITE_FAILED -> "GAGAL TULIS EPC (SUDAH PAIR)"
+                PairingStatus.PAIRING_FAILED -> "GAGAL PAIRING"
+            }
+            binding.textViewCurrentRfidStatus.text = statusText
             binding.textViewCurrentRfidTag.text = book.rfidTagHex ?: "TIDAK ADA"
 
-            if (book.rfidPairingStatus == "BERHASIL_DITAG" || !book.rfidTagHex.isNullOrBlank()) {
+            // Teks tombol berdasarkan status pairing
+            if (book.pairingStatus == PairingStatus.PAIRED_WRITE_SUCCESS ||
+                (book.pairingStatus != PairingStatus.NOT_PAIRED && book.pairingStatus != PairingStatus.PAIRING_FAILED && !book.rfidTagHex.isNullOrBlank())
+            ) {
                 binding.buttonStartTagging.text = "Ulangi Proses Penandaan (Timpa)"
             } else {
                 binding.buttonStartTagging.text = "Mulai Proses Penandaan"
@@ -185,12 +221,10 @@ class BookTaggingActivity : AppCompatActivity() {
 
         } else {
             binding.layoutBookDetails.visibility = View.GONE
-            binding.buttonStartTagging.text = "Mulai Proses Penandaan"
+            binding.buttonStartTagging.text = "Mulai Proses Penandaan" // Default text
         }
     }
 
-    // --- ViewModelFactory Sederhana (Contoh) ---
-    // Pindahkan ini ke file terpisah jika lebih kompleks atau digunakan di banyak tempat
     @Suppress("UNCHECKED_CAST")
     class BookTaggingViewModelFactory(
         private val application: Application,

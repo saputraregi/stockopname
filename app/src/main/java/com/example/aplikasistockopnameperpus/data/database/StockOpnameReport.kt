@@ -13,5 +13,7 @@ data class StockOpnameReport(
     var totalItemsExpected: Int = 0,
     var totalItemsFound: Int = 0,
     var totalItemsMissing: Int = 0,
-    var totalItemsNewOrUnexpected: Int = 0 // Untuk tag yang tidak ada di master
+    var totalItemsNewOrUnexpected: Int = 0, // Untuk tag yang tidak ada di master
+    var totalItemsMisplaced: Int = 0,
+    var userId: String? = null
 )

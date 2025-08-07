@@ -1,198 +1,266 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:padding="16dp"
-    tools:context=".BookTaggingActivity">
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Judul Halaman -->
-    <TextView
-        android:id="@+id/textViewTaggingTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Penandaan RFID Buku (Pairing &amp; Write)"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="16dp"/>
+    <data>
+        <!-- Optional: ViewModel DataBinding -->
+    </data>
 
-    <!-- Input Kode Item Buku -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/textFieldItemLayoutCode"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:hint="Kode Item Buku (Scan atau Ketik)"
-        app:layout_constraintTop_toBottomOf="@id/textViewTaggingTitle"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/buttonScanBarcode"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="16dp">
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="16dp"
+        tools:context=".BookTaggingActivity">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/editTextItemCode"
-            android:layout_width="match_parent"
+        <!-- Input Kode Item dan Scan Barcode -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardView_input_item_code"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:inputType="text"
-            android:maxLines="1"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
-    <ImageButton
-        android:id="@+id/buttonScanBarcode"
-        android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:src="@android:drawable/ic_menu_camera"
-        android:contentDescription="Scan Barcode Kode Item"
-        app:layout_constraintTop_toTopOf="@id/textFieldItemLayoutCode"
-        app:layout_constraintBottom_toBottomOf="@id/textFieldItemLayoutCode"
-        app:layout_constraintEnd_toEndOf="parent"/>
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp">
 
-    <!-- Informasi Buku Ditemukan -->
-    <LinearLayout
-        android:id="@+id/layoutBookDetails"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginTop="16dp"
-        android:padding="8dp"
-        android:background="@drawable/border_outline"
-        app:layout_constraintTop_toBottomOf="@id/textFieldItemLayoutCode"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:visibility="gone"
-        tools:visibility="visible">
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/textFieldLayout_item_code"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:hint="Kode Item Buku"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/button_scan_barcode"
+                    app:layout_constraintHorizontal_bias="0.5"
+                    app:layout_constraintHorizontal_chainStyle="packed"
+                    android:layout_marginEnd="8dp">
 
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editText_item_code"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Button
+                    android:id="@+id/button_scan_barcode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:text="Scan"
+                    app:icon="@drawable/ic_barcode_scan"
+                    app:layout_constraintTop_toTopOf="@+id/textFieldLayout_item_code"
+                    app:layout_constraintBottom_toBottomOf="@+id/textFieldLayout_item_code"
+                    app:layout_constraintStart_toEndOf="@+id/textFieldLayout_item_code"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Status Proses -->
         <TextView
-            android:id="@+id/textViewBookTitleLabel"
+            android:id="@+id/textView_process_status_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Judul:"
-            android:textStyle="bold"/>
-        <TextView
-            android:id="@+id/textViewBookTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            tools:text="Pemrograman Android dengan Kotlin"/>
-
-        <TextView
-            android:id="@+id/textViewBookAuthorLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Penulis:"
+            android:text="Status:"
+            android:layout_marginTop="16dp"
             android:textStyle="bold"
-            android:layout_marginTop="4dp"/>
-        <TextView
-            android:id="@+id/textViewBookAuthor"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            tools:text="Google"/>
+            app:layout_constraintTop_toBottomOf="@+id/cardView_input_item_code"
+            app:layout_constraintStart_toStartOf="parent"/>
 
         <TextView
-            android:id="@+id/textViewCurrentRfidStatusLabel"
+            android:id="@+id/textView_process_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            tools:text="Silakan scan atau masukkan kode item buku."
+            android:layout_marginStart="8dp"
+            app:layout_constraintTop_toTopOf="@+id/textView_process_status_label"
+            app:layout_constraintBottom_toBottomOf="@+id/textView_process_status_label"
+            app:layout_constraintStart_toEndOf="@+id/textView_process_status_label"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- Detail Buku (Awalnya GONE) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/layout_book_details"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintTop_toBottomOf="@+id/textView_process_status"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/textView_book_title_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Judul:"
+                    android:textStyle="bold"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <TextView
+                    android:id="@+id/textView_book_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    tools:text="Belajar Android Jetpack Compose"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintTop_toTopOf="@+id/textView_book_title_label"
+                    app:layout_constraintStart_toEndOf="@+id/textView_book_title_label"
+                    app:layout_constraintEnd_toEndOf="parent"/>
+
+                <!-- Penulis tidak lagi ditampilkan sesuai kode Activity -->
+                <!--
+                <TextView
+                    android:id="@+id/textView_book_author_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Penulis:"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_book_title"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <TextView
+                    android:id="@+id/textView_book_author"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    tools:text="John Doe"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintTop_toTopOf="@+id/textView_book_author_label"
+                    app:layout_constraintStart_toEndOf="@+id/textView_book_author_label"
+                    app:layout_constraintEnd_toEndOf="parent"/>
+                -->
+
+                <TextView
+                    android:id="@+id/textView_current_rfid_status_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Status RFID:"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_book_title"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <TextView
+                    android:id="@+id/textView_current_rfid_status"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    tools:text="BELUM DITAG"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_status_label"
+                    app:layout_constraintStart_toEndOf="@+id/textView_current_rfid_status_label"
+                    app:layout_constraintEnd_toEndOf="parent"/>
+
+                <TextView
+                    android:id="@+id/textView_current_rfid_tag_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tag RFID:"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_status"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <TextView
+                    android:id="@+id/textView_current_rfid_tag"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    tools:text="TIDAK ADA"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_tag_label"
+                    app:layout_constraintStart_toEndOf="@+id/textView_current_rfid_tag_label"
+                    app:layout_constraintEnd_toEndOf="parent"/>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Informasi EPC yang Terbaca Selama Proses (Awalnya GONE) -->
+        <TextView
+            android:id="@+id/textView_scanned_epc_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Status RFID Saat Ini:"
+            android:text="EPC Terbaca:"
             android:textStyle="bold"
-            android:layout_marginTop="4dp"/>
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintTop_toBottomOf="@+id/layout_book_details"
+            app:layout_constraintStart_toStartOf="parent"/>
+
         <TextView
-            android:id="@+id/textViewCurrentRfidStatus"
-            android:layout_width="wrap_content"
+            android:id="@+id/textView_scanned_epc_value"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            tools:text="BELUM_DITAG"/>
-        <TextView
-            android:id="@+id/textViewCurrentRfidTagLabel"
-            android:layout_width="wrap_content"
+            tools:text="E28011700000020B1A76269C"
+            android:layout_marginStart="8dp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintTop_toTopOf="@+id/textView_scanned_epc_label"
+            app:layout_constraintBottom_toBottomOf="@+id/textView_scanned_epc_label"
+            app:layout_constraintStart_toEndOf="@+id/textView_scanned_epc_label"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- Progress Bar (Awalnya GONE) -->
+        <ProgressBar
+            android:id="@+id/progressBar_tagging"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Tag Terpasang:"
-            android:textStyle="bold"
-            android:layout_marginTop="4dp"/>
-        <TextView
-            android:id="@+id/textViewCurrentRfidTag"
-            android:layout_width="wrap_content"
+            android:indeterminate="true"
+            android:visibility="gone"
+            tools:visibility="visible"
+            android:layout_marginTop="16dp"
+            app:layout_constraintTop_toBottomOf="@+id/textView_scanned_epc_value"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- Tombol Aksi -->
+        <LinearLayout
+            android:id="@+id/layout_action_buttons"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            tools:text="TIDAK ADA"/>
-    </LinearLayout>
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp"
+            app:layout_constraintTop_toBottomOf="@+id/progressBar_tagging"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintVertical_bias="1.0"> <!-- Mendorong ke bawah -->
 
-    <!-- Tombol untuk Proses Penandaan -->
-    <Button
-        android:id="@+id/buttonStartTagging"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Mulai Proses Penandaan"
-        app:layout_constraintTop_toBottomOf="@id/layoutBookDetails"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"
-        android:enabled="false"/> <!-- Awalnya disable -->
+            <Button
+                android:id="@+id/button_clear"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Bersihkan"
+                android:layout_marginEnd="8dp"/>
 
-    <!-- Hasil Scan RFID (untuk verifikasi atau debug) -->
-    <TextView
-        android:id="@+id/textViewScannedEpcLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="EPC Tag Terbaca Saat Proses:"
-        android:textStyle="bold"
-        app:layout_constraintTop_toBottomOf="@id/buttonStartTagging"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="16dp"
-        android:visibility="gone"
-        tools:visibility="visible"/>
+            <Button
+                android:id="@+id/button_start_tagging"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:text="Mulai Proses Penandaan"
+                android:enabled="false"/> <!-- Awalnya disabled -->
 
-    <TextView
-        android:id="@+id/textViewScannedEpcValue"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        tools:text="E28011700000020F351B063C"
-        app:layout_constraintTop_toBottomOf="@id/textViewScannedEpcLabel"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="4dp"
-        android:background="#EDEDED"
-        android:padding="8dp"
-        android:visibility="gone"
-        tools:visibility="visible"/>
+        </LinearLayout>
 
-    <!-- Pesan Status Proses -->
-    <TextView
-        android:id="@+id/textViewProcessStatus"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:gravity="center"
-        android:textSize="16sp"
-        android:textStyle="italic"
-        app:layout_constraintTop_toBottomOf="@id/textViewScannedEpcValue"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:text="Letakkan tag RFID dekat reader dan klik 'Mulai Proses Penandaan'"/>
-
-    <!-- Tombol Aksi Tambahan -->
-    <Button
-        android:id="@+id/buttonClear"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Bersihkan / Buku Berikutnya"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="8dp"/>
-
-    <!-- Indikator Loading -->
-    <ProgressBar
-        android:id="@+id/progressBarTagging"
-        style="?android:attr/progressBarStyleLarge"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        tools:visibility="visible"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

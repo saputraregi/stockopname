@@ -1,42 +1,73 @@
 package com.example.aplikasistockopnameperpus.viewmodel
 
 import android.app.Application
+// import android.content.ContentResolver // Tidak digunakan secara langsung di sini lagi
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.aplikasistockopnameperpus.data.database.AppDatabase
 import com.example.aplikasistockopnameperpus.data.database.BookMaster
-// Import repository, parser, exporter jika sudah dibuat
+import com.example.aplikasistockopnameperpus.data.database.StockOpnameItem
+import com.example.aplikasistockopnameperpus.data.database.StockOpnameReport
 import com.example.aplikasistockopnameperpus.data.repository.BookRepository
 import com.example.aplikasistockopnameperpus.util.parser.CsvFileParser
 import com.example.aplikasistockopnameperpus.util.parser.ExcelFileParser
 import com.example.aplikasistockopnameperpus.util.parser.TxtFileParser
+import com.example.aplikasistockopnameperpus.util.parser.FileParser // Penting: Impor interface FileParser
+import com.example.aplikasistockopnameperpus.util.parser.ParseResult // Penting: Impor ParseResult
 import com.example.aplikasistockopnameperpus.util.exporter.CsvFileExporter
-import com.example.aplikasistockopnameperpus.util.FileType // Pastikan enum ini ada
+import com.example.aplikasistockopnameperpus.util.exporter.ExcelFileExporter
+import com.example.aplikasistockopnameperpus.util.exporter.TxtFileExporter
+// Impor FileExporter interface jika ada
+// import com.example.aplikasistockopnameperpus.util.exporter.FileExporter
+
+import com.example.aplikasistockopnameperpus.util.FileType
+import com.example.aplikasistockopnameperpus.util.StorageHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.io.OutputStream
 
-// Kelas untuk merepresentasikan status operasi
+// Kelas ImportExportStatus tetap sama
 sealed class ImportExportStatus {
     object Loading : ImportExportStatus()
-    data class Progress(val percentage: Int, val processedItems: Int, val totalItems: Int) : ImportExportStatus()
-    data class Success(val message: String) : ImportExportStatus()
+    data class Progress(val percentage: Int, val processedItems: Int, val totalItems: Int) : ImportExportStatus() // totalItems bisa jadi jumlah baris
+    data class Success(val message: String, val warnings: List<String>? = null) : ImportExportStatus() // Tambah warnings
     data class Error(val errorMessage: String) : ImportExportStatus()
+    // Anda bisa menambahkan InvalidFormat di sini juga jika ingin status spesifik untuk UI
+    // data class InvalidFormat(val message: String) : ImportExportStatus()
 }
 
 class ImportExportViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val bookMasterDao = AppDatabase.getDatabase(application).bookMasterDao()
-    // private val repository: BookRepository = BookRepository(bookMasterDao) // Jika menggunakan Repository
+    private val bookRepository: BookRepository
+    // Parser diinisialisasi sebagai implementasi spesifik dari FileParser
+    private val csvFileParser: FileParser = CsvFileParser()
+    private val excelFileParser: FileParser = ExcelFileParser()
+    // Untuk TxtFileParser, jika Anda ingin delimiter berbeda, Anda bisa mengaturnya di sini
+    // atau memiliki beberapa instance jika perlu. Untuk sekarang, default delimiter.
+    private val txtFileParser: FileParser = TxtFileParser()
 
-    // Untuk menyimpan URI file yang dipilih untuk import
+    // Exporter
+    private val csvExporter = CsvFileExporter() // Asumsi implementasi FileExporter
+    private val excelExporter = ExcelFileExporter()
+    private val txtExporter = TxtFileExporter()
+
+    init {
+        val database = AppDatabase.getDatabase(application)
+        bookRepository = BookRepository(
+            database.bookMasterDao(),
+            database.stockOpnameReportDao(),
+            database.stockOpnameItemDao()
+        )
+    }
+
     private var _selectedImportFileUri = MutableLiveData<Uri?>()
-    // val selectedImportFileUri: LiveData<Uri?> get() = _selectedImportFileUri // Jika perlu diobservasi
+    val selectedImportFileUri: LiveData<Uri?> get() = _selectedImportFileUri // Dibuat public jika UI perlu observe
 
     private val _importStatus = MutableLiveData<ImportExportStatus?>()
     val importStatus: LiveData<ImportExportStatus?> get() = _importStatus
@@ -46,10 +77,17 @@ class ImportExportViewModel(application: Application) : AndroidViewModel(applica
 
     fun setSelectedFileForImport(uri: Uri?) {
         _selectedImportFileUri.value = uri
+        if (uri == null) {
+            _importStatus.value = null // Reset status jika file di-clear
+        }
     }
 
     fun clearSelectedFileForImport() {
-        _selectedImportFileUri.value = null
+        setSelectedFileForImport(null)
+    }
+
+    fun clearExportStatus() {
+        _exportStatus.value = null
     }
 
     fun startImportMasterData() {
@@ -61,302 +99,250 @@ class ImportExportViewModel(application: Application) : AndroidViewModel(applica
         _importStatus.value = ImportExportStatus.Loading
         viewModelScope.launch {
             try {
-                val contentResolver = getApplication<Application>().contentResolver
-                val inputStream: InputStream? = contentResolver.openInputStream(uri)
-
-                if (inputStream == null) {
-                    _importStatus.postValue(ImportExportStatus.Error("Gagal membuka file."))
+                val fileType = determineFileTypeFromUri(uri)
+                if (fileType == null) {
+                    _importStatus.postValue(ImportExportStatus.Error("Tipe file tidak didukung atau tidak dikenali."))
                     return@launch
                 }
 
-                // Tentukan tipe file berdasarkan ekstensi atau MIME type dari URI
-                val fileType = determineFileTypeFromUri(uri) // Anda perlu implementasi fungsi ini
-
-                val booksToImport: List<BookMaster> = when (fileType) {
-                    FileType.CSV -> {
-                        // val csvParser = CsvFileParser() // Instance parser Anda
-                        // withContext(Dispatchers.IO) { csvParser.parseFile(inputStream) }
-                        // Placeholder:
-                        withContext(Dispatchers.IO) { parseCsvPlaceholder(inputStream) }
-                    }
-                    FileType.EXCEL_XLSX, FileType.EXCEL_XLS -> {
-                        // val excelParser = ExcelFileParser() // Instance parser Anda
-                        // withContext(Dispatchers.IO) { excelParser.parseFile(inputStream) }
-                        // Placeholder:
-                        withContext(Dispatchers.IO) { parseExcelPlaceholder(inputStream) }
-                    }
-                    FileType.TXT -> {
-                        // val txtParser = TxtFileParser() // Instance parser Anda
-                        // withContext(Dispatchers.IO) { txtParser.parseFile(inputStream) }
-                        // Placeholder:
-                        withContext(Dispatchers.IO) { parseTxtPlaceholder(inputStream) }
-                    }
-                    null -> {
-                        _importStatus.postValue(ImportExportStatus.Error("Tipe file tidak didukung atau tidak dikenali."))
-                        return@launch
-                    }
+                // Pilih parser yang sesuai berdasarkan fileType
+                val parser: FileParser = when (fileType) {
+                    FileType.CSV -> csvFileParser
+                    FileType.EXCEL_XLSX, FileType.EXCEL_XLS -> excelFileParser
+                    FileType.TXT -> txtFileParser
+                    // Tidak perlu else karena fileType sudah dipastikan tidak null dan merupakan salah satu dari ini
                 }
-                inputStream.close()
 
+                StorageHelper.getInputStreamFromUri(getApplication(), uri)?.use { inputStream ->
+                    // Definisikan callback onProgress
+                    // Total items untuk progress parsing biasanya adalah jumlah baris.
+                    // Ini sulit diketahui di awal tanpa membaca seluruh file dulu.
+                    // Untuk sementara, kita akan update progress berdasarkan item yang berhasil diproses,
+                    // atau jika parser bisa memberikan total item (misalnya jumlah baris).
+                    // Untuk sekarang, kita update progress saat parsing dan saat import ke DB.
 
-                if (booksToImport.isNotEmpty()) {
-                    // Opsi: Hapus data lama sebelum import baru? Atau lakukan merge/update?
-                    // Untuk contoh ini, kita replace semua (hati-hati dengan ID jika autoGenerate)
-                    // bookMasterDao.clearAllBooks() // Hati-hati dengan ini
-                    var importedCount = 0
-                    booksToImport.forEachIndexed { index, book ->
-                        try {
-                            // Validasi data buku sebelum insert
-                            if (book.itemCode.isBlank() || book.title.isBlank()){
-                                // Log atau skip item yang tidak valid
-                                System.err.println("Skipping invalid book: ${book.itemCode}")
+                    // Tahap 1: Parsing file
+                    // Kita tidak bisa tahu totalItems untuk progress parsing secara akurat di sini
+                    // kecuali parser mengembalikan total baris yang akan dibaca.
+                    // Untuk sekarang, kita hanya akan menampilkan progress saat import ke DB.
+                    // Jika parser Anda bisa memberikan perkiraan jumlah baris, Anda bisa
+                    // mem-post progress dari callback onProgress parser.
+                    // Misalnya, _importStatus.postValue(ImportExportStatus.Progress(it, it, UNKNOWN_TOTAL_ITEMS))
+
+                    val parseResult: ParseResult = parser.parse(inputStream) { processedLines ->
+                        // Callback onProgress dari parser.
+                        // Anda bisa mem-post status progress di sini jika parser Anda
+                        // dapat memberikan informasi yang cukup (misalnya, % selesai parsing).
+                        // Karena kita belum tahu total baris, kita mungkin tidak bisa memberikan persentase akurat.
+                        // Untuk saat ini, kita akan fokus pada progress saat import ke database.
+                        // Log.d("ImportVM", "Parser progress: $processedLines lines processed")
+                    }
+
+                    when (parseResult) {
+                        is ParseResult.Success -> {
+                            val booksToImport = parseResult.books
+                            val parsingWarnings = parseResult.warnings
+
+                            if (booksToImport.isNotEmpty()) {
+                                // Opsi: Hapus data lama (jika perlu, lakukan via Repository)
+                                // withContext(Dispatchers.IO) { bookRepository.clearAllBookMasters() }
+
+                                var importedCount = 0
+                                val importErrors = mutableListOf<String>()
+
+                                _importStatus.postValue(ImportExportStatus.Progress(0, 0, booksToImport.size)) // Progress awal untuk import DB
+
+                                booksToImport.forEachIndexed { index, book ->
+                                    if (book.itemCode.isBlank() /*|| book.title.isBlank()*/) { // Title bisa kosong sesuai parser
+                                        val errorMsg = "Data dilewati (baris file sekitar ${index + 2}): Item Code kosong. (Judul: ${book.title.ifBlank { "[kosong]" }})"
+                                        Log.w("ImportVM", errorMsg)
+                                        importErrors.add(errorMsg) // Ini adalah error validasi sebelum ke DB
+                                    } else {
+                                        try {
+                                            withContext(Dispatchers.IO) {
+                                                bookRepository.insertOrUpdateBookMaster(book)
+                                            }
+                                            importedCount++
+                                        } catch (e: Exception) {
+                                            val errorMsg = "Gagal import buku ${book.itemCode}: ${e.message}"
+                                            Log.e("ImportVM", errorMsg, e)
+                                            importErrors.add(errorMsg)
+                                        }
+                                    }
+                                    val progressPercentage = (((index + 1).toFloat() / booksToImport.size) * 100).toInt()
+                                    _importStatus.postValue(ImportExportStatus.Progress(progressPercentage, index + 1, booksToImport.size))
+                                }
+
+                                val finalWarnings = parsingWarnings + importErrors // Gabungkan semua peringatan/error
+                                val successMessage = "$importedCount dari ${booksToImport.size} buku berhasil diimpor."
+
+                                if (finalWarnings.isNotEmpty()) {
+                                    _importStatus.postValue(ImportExportStatus.Success(successMessage, finalWarnings))
+                                } else {
+                                    _importStatus.postValue(ImportExportStatus.Success(successMessage))
+                                }
+
                             } else {
-                                bookMasterDao.insertOrUpdateBook(book) // Atau insertAll jika parser mengembalikan list
-                                importedCount++
+                                // Jika booksToImport kosong tapi parsing berhasil (mungkin file kosong atau hanya header)
+                                if (parsingWarnings.isNotEmpty()) {
+                                    _importStatus.postValue(ImportExportStatus.Error("Tidak ada data buku yang valid ditemukan.\nPeringatan parsing:\n- ${parsingWarnings.joinToString("\n- ")}"))
+                                } else {
+                                    _importStatus.postValue(ImportExportStatus.Error("Tidak ada data buku yang valid ditemukan dalam file."))
+                                }
                             }
-                        } catch (e: Exception) {
-                            // Tangani error duplikasi atau lainnya per item jika perlu
-                            System.err.println("Error inserting book ${book.itemCode}: ${e.message}")
                         }
-                        // Update progress
-                        val progressPercentage = ((index + 1).toFloat() / booksToImport.size * 100).toInt()
-                        _importStatus.postValue(ImportExportStatus.Progress(progressPercentage, index + 1, booksToImport.size))
+                        is ParseResult.Error -> {
+                            _importStatus.postValue(ImportExportStatus.Error("Import gagal saat parsing: ${parseResult.errorMessage}"))
+                        }
+                        is ParseResult.InvalidFormat -> {
+                            _importStatus.postValue(ImportExportStatus.Error("Import gagal: Format file tidak sesuai. ${parseResult.message}"))
+                            // Atau gunakan status spesifik jika Anda menambahkannya:
+                            // _importStatus.postValue(ImportExportStatus.InvalidFormat("Format file tidak sesuai. ${parseResult.message}"))
+                        }
                     }
-
-                    _importStatus.postValue(ImportExportStatus.Success("$importedCount dari ${booksToImport.size} buku berhasil diimpor."))
-                } else {
-                    _importStatus.postValue(ImportExportStatus.Error("Tidak ada data buku yang valid ditemukan dalam file."))
-                }
+                } ?: _importStatus.postValue(ImportExportStatus.Error("Gagal membuka file untuk import."))
 
             } catch (e: Exception) {
-                _importStatus.postValue(ImportExportStatus.Error("Import gagal: ${e.message}"))
-                e.printStackTrace()
+                _importStatus.postValue(ImportExportStatus.Error("Import gagal: ${e.message ?: "Terjadi kesalahan tidak diketahui"}"))
+                Log.e("ImportVM", "Import Exception", e)
             } finally {
-                // Reset URI setelah selesai
-                // clearSelectedFileForImport() // Pindah ke Activity setelah sukses/error
+                // Pertimbangkan untuk tidak clear URI di sini agar pengguna bisa mencoba lagi
+                // atau UI membersihkannya setelah status ditampilkan.
+                // clearSelectedFileForImport() // Opsional: hapus jika ingin URI tetap ada
             }
         }
     }
 
-    fun startExportMasterData(uri: Uri, fileType: FileType) {
+    fun startExportMasterData(outputUri: Uri, fileType: FileType) {
         _exportStatus.value = ImportExportStatus.Loading
         viewModelScope.launch {
             try {
-                val books = bookMasterDao.getAllBooksList() // Ambil semua buku
+                val books = withContext(Dispatchers.IO) { bookRepository.getAllBookMastersList() }
                 if (books.isEmpty()) {
                     _exportStatus.postValue(ImportExportStatus.Error("Tidak ada data master untuk diekspor."))
                     return@launch
                 }
 
-                val contentResolver = getApplication<Application>().contentResolver
-                contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    when (fileType) {
-                        FileType.CSV -> {
-                            // val csvExporter = CsvFileExporter()
-                            // withContext(Dispatchers.IO) { csvExporter.exportBooks(outputStream, books) }
-                            withContext(Dispatchers.IO) { exportCsvPlaceholder(outputStream, books, "master") }
-                        }
-                        FileType.EXCEL_XLSX -> {
-                            // val excelExporter = ExcelFileExporter() // Untuk XLSX
-                            // withContext(Dispatchers.IO) { excelExporter.exportBooks(outputStream, books) }
-                            withContext(Dispatchers.IO) { exportExcelPlaceholder(outputStream, books, "master") }
-                        }
-                        // Tambahkan case untuk EXCEL_XLS jika perlu
-                        FileType.TXT -> {
-                            // val txtExporter = TxtFileExporter()
-                            // withContext(Dispatchers.IO) { txtExporter.exportBooks(outputStream, books) }
-                            withContext(Dispatchers.IO) { exportTxtPlaceholder(outputStream, books, "master") }
-                        }
-                        else -> {
-                            _exportStatus.postValue(ImportExportStatus.Error("Format export tidak didukung."))
-                            return@launch
+                getApplication<Application>().contentResolver.openOutputStream(outputUri)?.use { outputStream ->
+                    withContext(Dispatchers.IO) {
+                        when (fileType) {
+                            FileType.CSV -> csvExporter.exportBooks(books, outputStream) // Asumsi exportBooks ada di CsvFileExporter
+                            FileType.EXCEL_XLSX -> excelExporter.exportBooks(books, outputStream) // Asumsi exportBooks ada di ExcelFileExporter
+                            FileType.EXCEL_XLS -> {
+                                _exportStatus.postValue(ImportExportStatus.Error("Format Excel (XLS) belum didukung untuk ekspor ini."))
+                                return@withContext
+                            }
+                            FileType.TXT -> txtExporter.exportBooks(books, outputStream) // Asumsi exportBooks ada di TxtFileExporter
                         }
                     }
-                    _exportStatus.postValue(ImportExportStatus.Success("Data master berhasil diekspor ke ${uri.lastPathSegment}."))
+                    val fileName = StorageHelper.getFileName(getApplication(), outputUri) ?: outputUri.lastPathSegment ?: "file"
+                    _exportStatus.postValue(ImportExportStatus.Success("Data master berhasil diekspor ke $fileName."))
                 } ?: _exportStatus.postValue(ImportExportStatus.Error("Gagal membuat file untuk ekspor."))
 
             } catch (e: Exception) {
-                _exportStatus.postValue(ImportExportStatus.Error("Ekspor gagal: ${e.message}"))
-                e.printStackTrace()
+                _exportStatus.postValue(ImportExportStatus.Error("Ekspor gagal: ${e.message ?: "Terjadi kesalahan tidak diketahui"}"))
+                Log.e("ImportVM", "Export Master Exception", e)
             }
         }
     }
 
-    fun startExportOpnameResult(uri: Uri, fileType: FileType) {
+    fun startExportOpnameResult(outputUri: Uri, fileType: FileType) {
         _exportStatus.value = ImportExportStatus.Loading
         viewModelScope.launch {
-            // TODO: Ambil data hasil stock opname terakhir dari database
-            // Misalnya, Anda memiliki DAO untuk StockOpnameReport dan StockOpnameItem
-            // val lastReport = stockOpnameReportDao.getLatestReport()
-            // val itemsForReport = stockOpnameItemDao.getItemsForReport(lastReport.id)
-
-            // Untuk sekarang, kita buat data dummy atau error jika belum ada
-            val dummyOpnameData = listOf(
-                mapOf("itemCode" to "OP001", "status" to "Ditemukan", "epc" to "EPC001", "waktu" to System.currentTimeMillis()),
-                mapOf("itemCode" to "OP002", "status" to "Tidak Ditemukan", "epc" to "EPC002", "waktu" to 0L)
-            )
-
-            if (dummyOpnameData.isEmpty()) { // Ganti dengan pengecekan data opname yang sebenarnya
-                _exportStatus.postValue(ImportExportStatus.Error("Tidak ada data hasil opname untuk diekspor."))
-                return@launch
-            }
-
             try {
-                val contentResolver = getApplication<Application>().contentResolver
-                contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    when (fileType) {
-                        FileType.CSV -> {
-                            withContext(Dispatchers.IO) { exportCsvPlaceholder(outputStream, dummyOpnameData, "opname") }
-                        }
-                        FileType.EXCEL_XLSX -> {
-                            withContext(Dispatchers.IO) { exportExcelPlaceholder(outputStream, dummyOpnameData, "opname") }
-                        }
-                        FileType.TXT -> {
-                            withContext(Dispatchers.IO) { exportTxtPlaceholder(outputStream, dummyOpnameData, "opname") }
-                        }
-                        else -> {
-                            _exportStatus.postValue(ImportExportStatus.Error("Format export tidak didukung."))
-                            return@launch
+                val latestReport = withContext(Dispatchers.IO) { bookRepository.getLatestReport() }
+                if (latestReport == null) {
+                    _exportStatus.postValue(ImportExportStatus.Error("Tidak ada data laporan stock opname ditemukan."))
+                    return@launch
+                }
+
+                val itemsForReport = withContext(Dispatchers.IO) { bookRepository.getItemsForReportList(latestReport.reportId) }
+                if (itemsForReport.isEmpty()) {
+                    _exportStatus.postValue(ImportExportStatus.Error("Tidak ada item ditemukan untuk laporan stock opname terakhir (ID: ${latestReport.reportId})."))
+                    return@launch
+                }
+
+                // Anda mungkin perlu membuat data class gabungan jika exporter membutuhkan lebih banyak detail
+                // data class OpnameExportItemDetails(val item: StockOpnameItem, val book: BookMaster?)
+                // val detailedItemsForReport = itemsForReport.map { item ->
+                //     val book = bookRepository.getBookMasterByItemCode(item.itemCode) // Operasi IO, lakukan di context IO
+                //     OpnameExportItemDetails(item, book)
+                // }
+
+                getApplication<Application>().contentResolver.openOutputStream(outputUri)?.use { outputStream ->
+                    withContext(Dispatchers.IO) {
+                        when (fileType) {
+                            // Pastikan exporter Anda memiliki metode exportOpnameResults
+                            FileType.CSV -> csvExporter.exportOpnameResults(itemsForReport, latestReport, outputStream)
+                            FileType.EXCEL_XLSX -> excelExporter.exportOpnameResults(itemsForReport, latestReport, outputStream)
+                            FileType.EXCEL_XLS -> {
+                                _exportStatus.postValue(ImportExportStatus.Error("Format Excel (XLS) belum didukung untuk ekspor hasil opname ini."))
+                                return@withContext
+                            }
+                            FileType.TXT -> txtExporter.exportOpnameResults(itemsForReport, latestReport, outputStream)
                         }
                     }
-                    _exportStatus.postValue(ImportExportStatus.Success("Hasil stock opname berhasil diekspor ke ${uri.lastPathSegment}."))
+                    val fileName = StorageHelper.getFileName(getApplication(), outputUri) ?: outputUri.lastPathSegment ?: "file"
+                    _exportStatus.postValue(ImportExportStatus.Success("Hasil stock opname (Laporan ID: ${latestReport.reportId}) berhasil diekspor ke $fileName."))
                 } ?: _exportStatus.postValue(ImportExportStatus.Error("Gagal membuat file untuk ekspor."))
 
             } catch (e: Exception) {
-                _exportStatus.postValue(ImportExportStatus.Error("Ekspor hasil opname gagal: ${e.message}"))
-                e.printStackTrace()
+                _exportStatus.postValue(ImportExportStatus.Error("Ekspor hasil opname gagal: ${e.message ?: "Terjadi kesalahan tidak diketahui"}"))
+                Log.e("ImportVM", "Export Opname Exception", e)
             }
         }
     }
 
-    // --- Helper & Placeholder Functions ---
-    private fun determineFileTypeFromUri(uri: Uri): FileType? {
-        val fileName = uri.lastPathSegment?.lowercase()
-        return when {
-            fileName?.endsWith(".csv") == true -> FileType.CSV
-            fileName?.endsWith(".xlsx") == true -> FileType.EXCEL_XLSX
-            fileName?.endsWith(".xls") == true -> FileType.EXCEL_XLS // Anda perlu menangani ini jika didukung parser
-            fileName?.endsWith(".txt") == true -> FileType.TXT
-            else -> {
-                // Coba dari MIME type jika nama file tidak jelas
-                //val mimeType = getApplication<Application>().contentResolver.getType(uri)
-                //when (mimeType) {
-                //    "text/csv", "text/comma-separated-values" -> FileType.CSV
-                //    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> FileType.EXCEL_XLSX
-                //    "application/vnd.ms-excel" -> FileType.EXCEL_XLS
-                //    "text/plain" -> FileType.TXT
-                //    else -> null
-                //}
-                null
+    private suspend fun determineFileTypeFromUri(uri: Uri): FileType? {
+        val context = getApplication<Application>()
+        var determinedType: FileType? = null
+        val fileName = try {
+            withContext(Dispatchers.IO) { StorageHelper.getFileName(context, uri) }
+        } catch (e: Exception) {
+            Log.e("ImportVM", "Gagal mendapatkan nama file dari URI: $uri", e)
+            null
+        }
+
+        Log.d("ImportVM", "Menentukan tipe file untuk: $fileName (dari URI: $uri)")
+
+        if (fileName != null) {
+            val extension = fileName.substringAfterLast('.', "").lowercase()
+            if (extension.isNotEmpty()) {
+                determinedType = FileType.fromExtension(extension)
+                Log.d("ImportVM", "Tipe dari ekstensi '$extension': $determinedType")
             }
         }
-    }
 
-    // Placeholder untuk parser - Ganti dengan implementasi nyata menggunakan library
-    private suspend fun parseCsvPlaceholder(inputStream: InputStream): List<BookMaster> {
-        // Implementasi parsing CSV sederhana
-        val books = mutableListOf<BookMaster>()
-        inputStream.bufferedReader().useLines { lines ->
-            lines.drop(1).forEach { line -> // Skip header
-                val tokens = line.split(',') // Asumsi dipisahkan koma
-                if (tokens.size >= 3) { // Asumsi minimal ada itemCode, title, rfidTagHex
-                    try {
-                        books.add(BookMaster(
-                            itemCode = tokens[0].trim(),
-                            title = tokens[1].trim(),
-                            rfidTagHex = tokens[2].trim(),
-                            author = if (tokens.size > 3) tokens[3].trim() else null,
-                            // ... tambahkan kolom lain sesuai format CSV Anda
-                        ))
-                    } catch (e: Exception) {
-                        System.err.println("Error parsing line CSV: $line - ${e.message}")
-                    }
+        if (determinedType == null) {
+            try {
+                val mimeType = context.contentResolver.getType(uri)
+                if (mimeType != null) {
+                    Log.d("ImportVM", "MIME type dari ContentResolver: $mimeType")
+                    determinedType = FileType.fromMimeType(mimeType)
+                    Log.d("ImportVM", "Tipe dari MIME '$mimeType': $determinedType")
+                } else {
+                    Log.w("ImportVM", "MIME type null untuk URI: $uri")
                 }
+            } catch (e: SecurityException) {
+                Log.e("ImportVM", "SecurityException saat mendapatkan MIME type untuk URI: $uri. Pesan: ${e.message}. Pastikan permission URI diberikan dengan benar.", e)
+                // Jika tidak bisa mendapatkan MIME type karena permission, ini bisa jadi masalah.
+                // Untuk sekarang, kita biarkan determinedType null.
+            } catch (e: Exception) {
+                Log.e("ImportVM", "Error mendapatkan MIME type untuk URI: $uri. Pesan: ${e.message}", e)
             }
         }
-        return books
-    }
 
-    private suspend fun parseExcelPlaceholder(inputStream: InputStream): List<BookMaster> {
-        // Placeholder - Implementasi Excel parsing akan lebih kompleks (Apache POI)
-        System.out.println("DEBUG: Excel parsing placeholder called. InputStream available: ${inputStream.available()}")
-        // Contoh data dummy karena parsing Excel butuh library
-        return listOf(
-            BookMaster(itemCode = "EX001", title = "Buku Excel 1", rfidTagHex = "EXCELTAG001", author = "Penulis Excel"),
-            BookMaster(itemCode = "EX002", title = "Buku Excel 2", rfidTagHex = "EXCELTAG002", author = "Penulis Excel Lain")
-        )
-    }
-
-    private suspend fun parseTxtPlaceholder(inputStream: InputStream): List<BookMaster> {
-        // Implementasi parsing TXT sederhana (misal, dipisahkan tab)
-        val books = mutableListOf<BookMaster>()
-        inputStream.bufferedReader().useLines { lines ->
-            lines.drop(1).forEach { line -> // Skip header jika ada
-                val tokens = line.split('\t') // Asumsi dipisahkan tab
-                if (tokens.size >= 3) {
-                    try {
-                        books.add(BookMaster(
-                            itemCode = tokens[0].trim(),
-                            title = tokens[1].trim(),
-                            rfidTagHex = tokens[2].trim(),
-                            // ... tambahkan kolom lain
-                        ))
-                    } catch (e: Exception) {
-                        System.err.println("Error parsing line TXT: $line - ${e.message}")
-                    }
-                }
-            }
+        if (determinedType == null && fileName != null) {
+            // Fallback jika MIME type gagal tapi ekstensi ada dan tidak dikenali oleh FileType.fromExtension
+            // Anda bisa tambahkan logika di sini jika perlu, misalnya berdasarkan ekstensi yang lebih umum
+            // jika FileType.fromExtension sangat ketat.
+            Log.w("ImportVM", "Tidak dapat menentukan tipe file secara pasti untuk '$fileName'. Mengandalkan ekstensi jika ada, atau akan gagal.")
+        } else if (determinedType == null && fileName == null){
+            Log.e("ImportVM", "Tidak dapat menentukan tipe file karena nama file dan MIME type tidak tersedia atau gagal diakses.")
         }
-        return books
-    }
 
-    // Placeholder untuk exporter - Ganti dengan implementasi nyata
-    private suspend fun exportCsvPlaceholder(outputStream: OutputStream, data: List<Any>, type: String) {
-        outputStream.bufferedWriter().use { writer ->
-            if (type == "master") {
-                // Saring list untuk hanya menyertakan instance BookMaster
-                val bookMasters = data.filterIsInstance<BookMaster>()
-                if (bookMasters.isNotEmpty()) { // Lanjutkan hanya jika ada objek BookMaster yang sebenarnya
-                    writer.appendLine("ItemCode,Title,RFIDTagHex,Author,Publisher,Year,Category,ExpectedLocation") // Header
-                    bookMasters.forEach { book ->
-                        writer.appendLine("${book.itemCode},${book.title},${book.rfidTagHex},${book.author ?: ""},${book.publisher ?: ""},${book.yearPublished ?: ""},${book.category ?: ""},${book.expectedLocation ?: ""}")
-                    }
-                } else if (data.isNotEmpty()) {
-                    // Opsional: Tangani kasus di mana list tidak kosong tetapi tidak berisi objek BookMaster
-                    System.err.println("Peringatan: List data tipe 'master' tidak berisi objek BookMaster.")
-                }
-            } else if (type == "opname") {
-                // Serupa untuk Map
-                val opnameData = data.filterIsInstance<Map<String, Any>>()
-                if (opnameData.isNotEmpty()) {
-                    writer.appendLine("ItemCode,Status,EPC,WaktuScan") // Header
-                    opnameData.forEach { item ->
-                        writer.appendLine("${item["itemCode"]},${item["status"]},${item["epc"]},${item["waktu"]}")
-                    }
-                } else if (data.isNotEmpty()) {
-                    System.err.println("Peringatan: List data tipe 'opname' tidak berisi objek Map<String, Any>.")
-                }
-            }
-        }
-    }
-    private suspend fun exportExcelPlaceholder(outputStream: OutputStream, data: List<Any>, type: String) {
-        // Placeholder - Implementasi Excel export akan lebih kompleks
-        outputStream.bufferedWriter().use { it.write("Placeholder untuk data Excel ($type)\nData count: ${data.size}") }
 
-    }
-    private suspend fun exportTxtPlaceholder(outputStream: OutputStream, data: List<Any>, type: String) {
-        outputStream.bufferedWriter().use { writer ->
-            if (type == "master" && data.firstOrNull() is BookMaster) {
-                writer.appendLine("ItemCode\tTitle\tRFIDTagHex\tAuthor") // Header
-                (data as List<BookMaster>).forEach { book ->
-                    writer.appendLine("${book.itemCode}\t${book.title}\t${book.rfidTagHex}\t${book.author ?: ""}")
-                }
-            } else if (type == "opname" && data.firstOrNull() is Map<*, *>) {
-                writer.appendLine("ItemCode\tStatus\tEPC\tWaktuScan") // Header
-                (data as List<Map<String, Any>>).forEach { item ->
-                    writer.appendLine("${item["itemCode"]}\t${item["status"]}\t${item["epc"]}\t${item["waktu"]}")
-                }
-            }
-        }
+        Log.i("ImportVM", "Tipe file yang ditentukan akhir: $determinedType untuk URI: $uri")
+        return determinedType
     }
 }

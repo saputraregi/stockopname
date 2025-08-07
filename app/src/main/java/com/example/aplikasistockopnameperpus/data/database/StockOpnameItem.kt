@@ -20,12 +20,14 @@ import androidx.room.Index
     indices = [Index(value = ["reportId"]), Index(value = ["rfidTagHexScanned"])]
 )
 data class StockOpnameItem(
-    val reportId: Long, // Foreign key ke StockOpnameReport
+    var reportId: Long, // Foreign key ke StockOpnameReport
     val rfidTagHexScanned: String, // EPC dari tag yang benar-benar di-scan
     val tidScanned: String? = null, // TID dari tag yang di-scan
     val itemCodeMaster: String?, // Kode item dari master jika cocok, null jika tag asing
     val titleMaster: String?,    // Judul dari master jika cocok
     val scanTimestamp: Long,
     val status: String, // Misal: "DITEMUKAN_MASTER", "TIDAK_DITEMUKAN_DI_MASTER" (tag asing), "MASTER_TIDAK_TERSCAN"
-    val actualLocationIfDifferent: String? = null // Jika lokasi berbeda dari master
+    val actualLocationIfDifferent: String? = null, // Jika lokasi berbeda dari master
+    val expectedLocationMaster: String? = null, // Jika lokasi berbeda dari master
+    val isNewOrUnexpectedItem: Boolean = false // Jika ditemukan baru atau tidak
 )

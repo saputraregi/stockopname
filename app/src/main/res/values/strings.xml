@@ -349,4 +349,101 @@
     <string name="status_membaca_target_simple">Membaca target...</string> <!-- Sesuaikan jika berbeda dengan status_membaca_target -->
     <string name="target_epc_not_found_or_failed">Target EPC: Belum ada atau gagal dibaca.</string>
     <string name="status_prefix">Status: %1$s</string>
+        <!-- Pesan Umum dan Status -->
+        <string name="filter_all">Semua</string>
+        <string name="title_not_available">Judul Tidak Tersedia</string>
+        <string name="unknown_location">Lokasi Tidak Diketahui</string>
+        <string name="saving_opname_session">Menyimpan sesi opname...</string>
+        <string name="saving_message">Menyimpan...</string>
+        <string name="no_relevant_data_to_save">Tidak ada data relevan untuk disimpan.</string>
+        <string name="items_marked_as_missing">%d item ditandai sebagai hilang.</string>
+
+        <!-- Nama Sesi Opname -->
+        <string name="default_session_name_prefix">SesiOpname_</string>
+        <string name="opname_session_started_with_name">Sesi opname \'%s\' dimulai.</string>
+
+        <!-- Pesan Error -->
+        <string name="error_loading_books">Gagal memuat data buku: %s</string>
+        <string name="error_ui_update">Gagal memperbarui UI: %s</string>
+        <string name="error_starting_new_session">Gagal memulai sesi opname baru: %s</string>
+        <string name="error_session_not_ready_for_scan">Sesi belum siap atau ada error. Tidak bisa memulai pemindaian.</string>
+        <string name="error_invalid_session_for_saving">Status sesi tidak valid untuk disimpan.</string>
+        <string name="error_saving_session_to_db_no_id">Gagal menyimpan sesi ke database (tidak ada ID laporan yang dihasilkan).</string>
+        <string name="error_saving_session_generic">Gagal menyimpan sesi: %s</string>
+
+        <!-- Status Pemindaian dan Pesan SDK -->
+        <string name="uhf_scan_stopped_by_user">Pemindaian UHF dihentikan oleh pengguna.</string>
+        <string name="barcode_scan_stopped_by_user">Pemindaian Barcode dihentikan oleh pengguna.</string>
+        <string name="default_scan_location_uhf">LokasiScanUHF</string> <!-- Ganti dengan lokasi default yang sesuai -->
+        <string name="default_scan_location_barcode">LokasiScanBarcode</string> <!-- Ganti dengan lokasi default yang sesuai -->
+
+        <!-- Pesan Hasil Pemindaian Item -->
+        <string name="scan_unexpected_already_logged">Item tak terduga dengan ID %s sudah dicatat.</string>
+        <string name="unknown_item_title_prefix">Item Tidak Dikenal (%s)</string>
+        <string name="new_barcode_item_prefix">BARCODE_BARU_</string> <!-- Prefix untuk RFID tag dari item barcode baru -->
+        <string name="master_item_no_rfid_prefix">MASTER_NONRFID_</string> <!-- Prefix untuk RFID tag dari item master tanpa RFID -->
+
+
+        <!-- Label Filter (Anda mungkin sudah punya ini) -->
+        <string name="filter_found">Ditemukan</string> <!-- Sesuaikan dengan OpnameStatus.FOUND_CORRECT_LOCATION -->
+        <string name="filter_not_found_yet">Belum Ditemukan</string> <!-- Sesuaikan dengan OpnameStatus.NOT_SCANNED -->
+        <string name="filter_misplaced">Salah Lokasi</string> <!-- Sesuaikan dengan OpnameStatus.FOUND_WRONG_LOCATION -->
+        <string name="filter_new_or_unexpected">Baru/Tak Terduga</string> <!-- Untuk item dengan isNewOrUnexpected=true atau OpnameStatus.NEW_ITEM atau item di temporaryUnexpectedItems -->
+        <string name="filter_missing_final">Hilang (Final)</string> <!-- Sesuaikan dengan OpnameStatus.MISSING -->
+    <string name="opname_session_not_started">Sesi opname belum dimulai. Mulai sesi baru atau pindai item.</string>
+    <string name="error_updating_book_status_in_db">Gagal memperbarui status buku \'%1$s\' di database.</string>
+    <string name="error_marking_missing">Gagal menandai item sebagai hilang: %1$s</string>
+    <string name="pairing_status_not_paired">Not Paired</string>
+    <string name="pairing_status_pending">Pairing Pending</string>
+    <string name="pairing_status_paired_write_pending">Paired (Write Pending)</string>
+    <string name="pairing_status_paired_write_success">Paired (Write Success)</string>
+    <string name="pairing_status_paired_write_failed">Paired (Write Failed)</string>
+    <string name="pairing_status_pairing_failed">Pairing Failed</string>
+    <string name="opname_status_not_scanned">Belum Scan</string>
+    <string name="opname_status_found_correct">Ditemukan</string>
+    <string name="opname_status_found_wrong_location">Salah Lokasi</string>
+    <string name="opname_last_seen_at_location_prefix">Terlihat di: %s</string>
+    <string name="opname_status_missing">Hilang</string>
+    <string name="opname_status_new_item">Baru/Tak Terduga</string>
+    <string name="opname_detected_at_prefix">Terdeteksi pada: %s</string>
+    <string name="location_not_available">Lokasi Tidak Tersedia</string>
+    <string name="unknown_title">Judul Tidak Diketahui</string>
+    <string name="new_barcode_item_rfid_placeholder_prefix">Item Baru</string>
+    <string name="opname_session_saved_no_items">Sesi opname disimpan, tetapi tidak ada item yang ditemukan.</string>
+    <string name="error_no_items_to_save">Tidak ada item yang ditemukan</string>
+    <string name="error_saving_opname_session_db">Gagal menyimpan sesi opname</string>
+    <string name="error_saving_opname_session_exception">Gagal menyimpan sesi opname: %s</string>
+    <string name="dialog_mark_missing_title">Tandai sebagai Hilang</string>
+    <string name="dialog_mark_missing_message">Apakah Anda yakin ingin menandai buku \'%s\' sebagai hilang?</string>
+    <string name="action_mark_missing">Tandai sebagai Hilang</string>"
+    <string name="error_opening_import_export_page">Gagal membuka halaman Import/Export</string>
+    <string name="toast_session_name_cannot_be_empty">Nama sesi opname tidak boleh kosong.</string>
+    <string name="toast_session_name_updated">Nama sesi opname berhasil diperbarui.</string>
+    <string name="stop_scan_before_new_session">Hentikan pemindaian sebelum memulai sesi baru.</string>"
+    <string name="dialog_new_session_title">Mulai sesi baru?</string>
+    <string name="dialog_new_session_warning_unsaved_data">Terdapat data yang belum disimpan. Yakin ingin memulai sesi baru?</string>
+    <string name="action_start_new">Mulai sesi baru</string>
+    <string name="dialog_new_session_confirmation">Konfirmasi memulai sesi baru?</string>
+    <string name="status_loading_data">Memuat data...</string>
+    <string name="no_scanned_or_marked_data_to_save">Tidak ada data yang bisa disimpan.</string>
+    <string name="default_opname_session_name_format">SesiOpname_%1$s</string>
+    <string name="button_start_new_session">Mulai sesi baru</string>
+    <string name="button_import_data">Import Data</string>
+    <string name="button_save_name">Simpan Nama Sesi</string>
+    <string name="label_session_name">Nama Sesi Opname</string>
+    <string name="hint_edit_session_name">Edit Nama Sesi Opname</string>
+    <string name="stat_total_master">Total Master</string>
+    <string name="stat_found">Ditemukan</string>
+    <string name="stat_misplaced">Salah Lokasi</string>
+    <string name="stat_missing">Tidak Ditemukan</string>
+    <string name="stat_new_unexpected">Baru/Tak Terduga</string>
+    <string name="filter_status_hint">Filter Status</string>
+    <string name="button_mark_selected_missing">Tandai sebagai Hilang</string>
+    <string name="button_save_opname_results">Simpan Hasil Opname</string>
+    <string name="cd_status_icon">Status Icon</string>
+    <string name="export_error_missing_export_type">Tipe ekspor tidak ditemukan dalam input data.</string>
+    <string name="export_error_missing_file_format">Format file tidak ditemukan dalam input data.</string>
+    <string name="export_error_unknown_mime_type">Tipe MIME tidak diketahui untuk format: %s</string>
+    <string name="export_error_opening_uri_stream">Gagal membuka stream dari URI: %s</string>
+    <string name="export_error_opening_file_stream">Gagal membuka stream untuk file: %s</string>
 </resources>

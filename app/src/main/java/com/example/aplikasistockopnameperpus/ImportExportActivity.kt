@@ -9,27 +9,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.ui.semantics.text
-import androidx.glance.visibility
-import com.example.aplikasistockopnameperpus.databinding.ActivityImportExportBinding // Gunakan ViewBinding
-import com.example.aplikasistockopnameperpus.util.FileType // Anda perlu membuat enum FileType
+import androidx.lifecycle.lifecycleScope // <-- Tambahkan import ini
+import com.example.aplikasistockopnameperpus.databinding.ActivityImportExportBinding
+import com.example.aplikasistockopnameperpus.util.FileType
+import com.example.aplikasistockopnameperpus.util.StorageHelper // Pastikan import ini benar
 import com.example.aplikasistockopnameperpus.viewmodel.ImportExportStatus
 import com.example.aplikasistockopnameperpus.viewmodel.ImportExportViewModel
-import kotlin.collections.toTypedArray
+import kotlinx.coroutines.launch // <-- Tambahkan import ini
 
 class ImportExportActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityImportExportBinding
-    private val viewModel: ImportExportViewModel by viewModels() // Delegasi untuk ViewModel
+    private val viewModel: ImportExportViewModel by viewModels()
 
-    // Launcher untuk memilih file impor
     private lateinit var importFileLauncher: ActivityResultLauncher<Array<String>>
-
-    // Launcher untuk membuat file ekspor
     private lateinit var exportFileLauncher: ActivityResultLauncher<String>
-    private var currentExportType: FileType? = null // Untuk melacak tipe file yang akan diexport
-    private var currentExportAction: ExportAction? = null // Untuk melacak aksi export (Master/Opname)
-
+    private var currentExportType: FileType? = null
+    private var currentExportAction: ExportAction? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,40 +39,44 @@ class ImportExportActivity : AppCompatActivity() {
 
     private fun setupLaunchers() {
         importFileLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            uri?.let {
-                binding.textViewSelectedFileImportMaster.text = "File terpilih: ${it.lastPathSegment ?: "Tidak diketahui"}"
-                binding.buttonStartImportMaster.isEnabled = true
-                // Simpan URI untuk digunakan ViewModel, atau langsung kirim ke ViewModel
-                viewModel.setSelectedFileForImport(it)
+            uri?.let { selectedUri -> // Ubah nama variabel agar tidak bentrok dengan 'it' di dalam launch
+                // Jalankan dalam coroutine yang terikat dengan lifecycle Activity
+                lifecycleScope.launch {
+                    val fileName = StorageHelper.getFileName(this@ImportExportActivity, selectedUri)
+                    binding.textViewSelectedFileImportMaster.text = "File terpilih: ${fileName ?: selectedUri.lastPathSegment ?: "Tidak diketahui"}"
+                    binding.buttonStartImportMaster.isEnabled = true
+                    viewModel.setSelectedFileForImport(selectedUri)
+                    binding.textViewImportExportStatus.text = "Status: File dipilih, siap untuk import."
+                }
             } ?: run {
                 binding.textViewSelectedFileImportMaster.text = "Tidak ada file dipilih"
                 binding.buttonStartImportMaster.isEnabled = false
                 viewModel.clearSelectedFileForImport()
+                binding.textViewImportExportStatus.text = "Status: Siap"
             }
         }
 
         exportFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri: Uri? ->
-            uri?.let {
+            uri?.let { outputUri ->
                 currentExportType?.let { fileType ->
-                    when(currentExportAction) {
-                        ExportAction.MASTER_DATA -> viewModel.startExportMasterData(it, fileType)
-                        ExportAction.OPNAME_RESULT -> viewModel.startExportOpnameResult(it, fileType)
+                    when (currentExportAction) {
+                        ExportAction.MASTER_DATA -> viewModel.startExportMasterData(outputUri, fileType)
+                        ExportAction.OPNAME_RESULT -> viewModel.startExportOpnameResult(outputUri, fileType)
                         null -> Toast.makeText(this, "Aksi export tidak diketahui", Toast.LENGTH_SHORT).show()
                     }
-                }
-            }
+                } ?: Toast.makeText(this, "Tipe file export tidak dipilih", Toast.LENGTH_SHORT).show()
+            } ?: Toast.makeText(this, "Pembuatan file export dibatalkan", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setupClickListeners() {
         binding.buttonSelectFileImportMaster.setOnClickListener {
-            // Tentukan tipe MIME berdasarkan file yang ingin diimpor (CSV, XLS, TXT)
-            // Anda bisa menampilkan dialog untuk memilih tipe file jika perlu
-            importFileLauncher.launch(arrayOf("text/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain"))
+            viewModel.clearSelectedFileForImport()
+            binding.textViewImportExportStatus.text = "Status: Memilih file..."
+            importFileLauncher.launch(arrayOf("text/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain", "*/*"))
         }
 
         binding.buttonStartImportMaster.setOnClickListener {
-            // Tampilkan dialog konfirmasi sebelum memulai import
             AlertDialog.Builder(this)
                 .setTitle("Konfirmasi Import")
                 .setMessage("Apakah Anda yakin ingin mengimpor data dari file ini? Data master yang ada mungkin akan terganti atau diperbarui.")
@@ -99,91 +99,149 @@ class ImportExportActivity : AppCompatActivity() {
     }
 
     private fun showExportFormatDialog(defaultFileNamePrefix: String) {
-        val formats = FileType.values().map { it.displayName }.toTypedArray() // Misal: "CSV", "Excel (XLSX)", "TXT"
+        val availableFileTypes = FileType.values().filter { it.canExport } // Menggunakan properti canExport
+        if (availableFileTypes.isEmpty()) {
+            Toast.makeText(this, "Tidak ada format export yang tersedia.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val formats = availableFileTypes.map { it.displayName }.toTypedArray()
+
         AlertDialog.Builder(this)
             .setTitle("Pilih Format Export")
             .setItems(formats) { _, which ->
-                currentExportType = FileType.values()[which]
+                currentExportType = availableFileTypes[which]
+                // Jalankan dalam coroutine untuk mendapatkan nama file jika createPublicExportFile juga suspend
+                // Namun, untuk SAF, nama file sudah disarankan oleh sistem atau dipilih pengguna.
+                // Jika Anda ingin nama default yang lebih dinamis dari StorageHelper (yang suspend),
+                // maka perlu coroutine juga di sini.
+                // Untuk sekarang, kita asumsikan currentExportType.extension tidak suspend.
                 val suggestedName = "$defaultFileNamePrefix.${currentExportType?.extension}"
                 exportFileLauncher.launch(suggestedName)
             }
             .show()
     }
 
-
     private fun observeViewModel() {
+        viewModel.selectedImportFileUri.observe(this) { uri ->
+            if (uri == null) {
+                binding.textViewSelectedFileImportMaster.text = "Tidak ada file dipilih"
+                binding.buttonStartImportMaster.isEnabled = false
+            } else {
+                // Jika URI di-set dari luar launcher (misalnya dari ViewModel setelah validasi),
+                // kita mungkin perlu memperbarui nama file lagi di sini juga menggunakan coroutine.
+                lifecycleScope.launch {
+                    val fileName = StorageHelper.getFileName(this@ImportExportActivity, uri)
+                    binding.textViewSelectedFileImportMaster.text = "File terpilih: ${fileName ?: uri.lastPathSegment ?: "Tidak diketahui"}"
+                    binding.buttonStartImportMaster.isEnabled = true
+                }
+            }
+        }
+
+
         viewModel.importStatus.observe(this) { status ->
+            // ... (kode observe importStatus tetap sama) ...
             when (status) {
                 is ImportExportStatus.Loading -> {
                     binding.progressBarImportMaster.visibility = View.VISIBLE
-                    binding.progressBarImportMaster.isIndeterminate = false // Atur jika ada progress spesifik
+                    binding.progressBarImportMaster.isIndeterminate = true
                     binding.buttonStartImportMaster.isEnabled = false
+                    binding.buttonSelectFileImportMaster.isEnabled = false
                     binding.textViewImportExportStatus.text = "Status: Sedang memproses import..."
                 }
                 is ImportExportStatus.Success -> {
                     binding.progressBarImportMaster.visibility = View.GONE
-                    binding.buttonStartImportMaster.isEnabled = true // Atau false jika file sudah diproses
-                    binding.textViewImportExportStatus.text = "Status: ${status.message}"
-                    Toast.makeText(this, status.message, Toast.LENGTH_LONG).show()
-                    // Reset tampilan file terpilih jika perlu
-                    binding.textViewSelectedFileImportMaster.text = "Pilih file untuk import baru"
                     binding.buttonStartImportMaster.isEnabled = false
+                    binding.buttonSelectFileImportMaster.isEnabled = true
+
+                    val baseMessage = status.message
+                    if (status.warnings.isNullOrEmpty()) {
+                        binding.textViewImportExportStatus.text = "Status: $baseMessage"
+                        Toast.makeText(this, baseMessage, Toast.LENGTH_LONG).show()
+                    } else {
+                        val warningsText = status.warnings.joinToString("\n- ")
+                        val fullMessageToDisplay = "$baseMessage\n\nNamun terdapat beberapa catatan/peringatan:\n- $warningsText"
+                        binding.textViewImportExportStatus.text = "Status: $baseMessage (dengan catatan)"
+                        AlertDialog.Builder(this)
+                            .setTitle("Import Selesai dengan Catatan")
+                            .setMessage(fullMessageToDisplay)
+                            .setPositiveButton("OK", null)
+                            .show()
+                    }
+                    binding.textViewSelectedFileImportMaster.text = "Pilih file untuk import baru"
                     viewModel.clearSelectedFileForImport()
                 }
                 is ImportExportStatus.Error -> {
                     binding.progressBarImportMaster.visibility = View.GONE
                     binding.buttonStartImportMaster.isEnabled = true
-                    binding.textViewImportExportStatus.text = "Status: Error - ${status.errorMessage}"
-                    Toast.makeText(this, "Error: ${status.errorMessage}", Toast.LENGTH_LONG).show()
+                    binding.buttonSelectFileImportMaster.isEnabled = true
+                    val errorMessage = status.errorMessage
+                    binding.textViewImportExportStatus.text = "Status: Error Import"
+                    AlertDialog.Builder(this)
+                        .setTitle("Import Gagal")
+                        .setMessage(errorMessage)
+                        .setPositiveButton("OK", null)
+                        .show()
                 }
                 is ImportExportStatus.Progress -> {
                     binding.progressBarImportMaster.visibility = View.VISIBLE
                     binding.progressBarImportMaster.isIndeterminate = false
                     binding.progressBarImportMaster.progress = status.percentage
                     binding.textViewImportExportStatus.text = "Status: Import ${status.percentage}% (${status.processedItems}/${status.totalItems})"
+                    binding.buttonStartImportMaster.isEnabled = false
+                    binding.buttonSelectFileImportMaster.isEnabled = false
                 }
-                null -> { // Idle state
+                null -> {
                     binding.progressBarImportMaster.visibility = View.GONE
+                    binding.buttonStartImportMaster.isEnabled = viewModel.selectedImportFileUri.value != null
+                    binding.buttonSelectFileImportMaster.isEnabled = true
                     binding.textViewImportExportStatus.text = "Status: Siap"
                 }
             }
         }
 
         viewModel.exportStatus.observe(this) { status ->
+            // ... (kode observe exportStatus tetap sama, pastikan sudah exhaustive) ...
+            val isExporting = status is ImportExportStatus.Loading || status is ImportExportStatus.Progress
+            binding.buttonExportMasterData.isEnabled = !isExporting
+            binding.buttonExportStockOpnameResult.isEnabled = !isExporting
+
             when (status) {
                 is ImportExportStatus.Loading -> {
-                    // Tampilkan progress bar atau loading indicator untuk export jika perlu
                     binding.textViewImportExportStatus.text = "Status: Sedang mengekspor data..."
-                    // Disable tombol export selama proses
+                }
+                is ImportExportStatus.Progress -> {
+                    binding.textViewImportExportStatus.text = "Status: Ekspor ${status.percentage}% (${status.processedItems}/${status.totalItems})"
                 }
                 is ImportExportStatus.Success -> {
                     binding.textViewImportExportStatus.text = "Status: ${status.message}"
                     Toast.makeText(this, status.message, Toast.LENGTH_LONG).show()
+                    if (!status.warnings.isNullOrEmpty()){
+                        AlertDialog.Builder(this)
+                            .setTitle("Export Selesai dengan Catatan")
+                            .setMessage("Peringatan:\n- ${status.warnings.joinToString("\n- ")}")
+                            .setPositiveButton("OK", null)
+                            .show()
+                    }
+                    viewModel.clearExportStatus()
                 }
                 is ImportExportStatus.Error -> {
-                    binding.textViewImportExportStatus.text = "Status: Error Export - ${status.errorMessage}"
-                    Toast.makeText(this, "Error Export: ${status.errorMessage}", Toast.LENGTH_LONG).show()
+                    val errorMessage = status.errorMessage
+                    binding.textViewImportExportStatus.text = "Status: Error Export"
+                    AlertDialog.Builder(this)
+                        .setTitle("Export Gagal")
+                        .setMessage(errorMessage)
+                        .setPositiveButton("OK", null)
+                        .show()
+                    viewModel.clearExportStatus()
                 }
-                null -> { // Idle state
+                null -> {
                     binding.textViewImportExportStatus.text = "Status: Siap"
                 }
-                else -> { /* No-op atau handle progress jika ada */ }
             }
         }
     }
 
-    // Enum untuk tipe file (buat di file terpisah atau di dalam Activity jika sederhana)
-    // Misalnya di utils/FileType.kt
-    // enum class FileType(val mimeType: String, val extension: String, val displayName: String) {
-    //    CSV("text/csv", "csv", "CSV"),
-    //    EXCEL_XLSX("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx", "Excel (XLSX)"),
-    //    // EXCEL_XLS("application/vnd.ms-excel", "xls", "Excel (XLS)"), // Jika mendukung XLS
-    //    TXT("text/plain", "txt", "TXT")
-    // }
-
-    // Enum untuk aksi export
     private enum class ExportAction {
         MASTER_DATA, OPNAME_RESULT
     }
 }
-

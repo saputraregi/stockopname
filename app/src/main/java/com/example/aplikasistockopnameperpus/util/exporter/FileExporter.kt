@@ -2,6 +2,7 @@ package com.example.aplikasistockopnameperpus.util.exporter
 
 import com.example.aplikasistockopnameperpus.data.database.BookMaster
 import com.example.aplikasistockopnameperpus.data.database.StockOpnameItem // Jika perlu export detail opname
+import com.example.aplikasistockopnameperpus.data.database.StockOpnameReport
 import java.io.OutputStream
 
 /**
@@ -31,17 +32,28 @@ interface FileExporter {
     ): ExportResult
 
 
+    suspend fun exportOpnameItems(
+        opnameItems: List<StockOpnameItem>,
+        outputStream: OutputStream,
+        headers: List<String> = listOf( // Perhatikan default headers ini
+            "REPORT_ID", "RFID_SCANNED", "TID_SCANNED",
+            "ITEMCODE_MASTER", "TITLE_MASTER",
+            "SCAN_TIMESTAMP", "STATUS"
+        )
+    ): ExportResult
+
     /**
      * Mengekspor daftar item hasil opname.
      * Anda bisa membuat fungsi serupa untuk StockOpnameReport jika diperlukan.
      */
-    suspend fun exportOpnameItems(
+    suspend fun exportOpnameResults(
         opnameItems: List<StockOpnameItem>,
+        report: StockOpnameReport?, // Jadikan report opsional jika bisa null
         outputStream: OutputStream,
-        headers: List<String> = listOf(
-            "REPORT_ID", "RFID_SCANNED", "TID_SCANNED",
-            "ITEMCODE_MASTER", "TITLE_MASTER",
-            "SCAN_TIMESTAMP", "STATUS"
+        headers: List<String> = listOf( // Contoh header default
+            "REPORT_ID", "REPORT_START_TIME", "REPORT_END_TIME", "USER_NAME", "LOCATION",
+            "ITEMCODE_MASTER", "TITLE_MASTER", /* "RFID_MASTER", */
+            "RFID_SCANNED", "TID_SCANNED", "SCAN_TIMESTAMP", "STATUS"
         )
     ): ExportResult
 }

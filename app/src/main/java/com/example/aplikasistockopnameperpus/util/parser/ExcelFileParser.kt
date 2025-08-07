@@ -2,168 +2,193 @@ package com.example.aplikasistockopnameperpus.util.parser
 
 import android.util.Log
 import com.example.aplikasistockopnameperpus.data.database.BookMaster
+import com.example.aplikasistockopnameperpus.data.database.PairingStatus
+import com.example.aplikasistockopnameperpus.data.database.toEPC128Hex
 import com.example.aplikasistockopnameperpus.util.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.poi.ss.usermodel.*
-import org.apache.poi.xssf.usermodel.XSSFWorkbook // Untuk .xlsx
-// import org.apache.poi.hssf.usermodel.HSSFWorkbook // Untuk .xls jika perlu dukungan terpisah
-
 import java.io.InputStream
+import java.io.PushbackInputStream
+import java.io.IOException
 
-class ExcelFileParser(private val isXlsx: Boolean = true) : FileParser { // Default ke .xlsx
+class ExcelFileParser : FileParser {
 
     companion object {
         private const val TAG = "ExcelFileParser"
+    }
+
+    // Helper function to get cell value as String, handling different cell types
+    private fun getCellValueAsString(cell: Cell?): String? {
+        if (cell == null) {
+            return null
+        }
+        return when (cell.cellType) {
+            CellType.STRING -> cell.stringCellValue?.trim()
+            CellType.NUMERIC -> {
+                // Check if it's a date
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    // Anda mungkin ingin memformat tanggal secara spesifik di sini
+                    // Untuk saat ini, kita akan mengambilnya sebagai string default dari POI
+                    cell.localDateTimeCellValue?.toString() // Atau SimpleDateFormat jika Anda punya format target
+                } else {
+                    // Handle numeric value, format as string without .0 for integers
+                    val numValue = cell.numericCellValue
+                    if (numValue == numValue.toLong().toDouble()) {
+                        numValue.toLong().toString()
+                    } else {
+                        numValue.toString()
+                    }
+                }
+            }
+            CellType.BOOLEAN -> cell.booleanCellValue.toString()
+            CellType.FORMULA -> {
+                // Coba evaluasi formula, jika gagal, ambil string formula
+                try {
+                    cell.numericCellValue.toString() // Atau evaluasi ke tipe yang sesuai
+                } catch (e: Exception) {
+                    cell.cellFormula?.trim()
+                }
+            }
+            CellType.BLANK -> null
+            CellType.ERROR -> cell.errorCellValue.toString()
+            else -> null
+        }
+    }
+
+
+    private fun getColumnIndex(headerRow: Row?, columnName: String): Int {
+        headerRow ?: return -1
+        for (cell in headerRow) {
+            if (getCellValueAsString(cell)?.trim().equals(columnName, ignoreCase = true)) {
+                return cell.columnIndex
+            }
+        }
+        return -1
     }
 
     override suspend fun parse(inputStream: InputStream, onProgress: ((Int) -> Unit)?): ParseResult {
         return withContext(Dispatchers.IO) {
             val books = mutableListOf<BookMaster>()
             val warnings = mutableListOf<String>()
-            var currentProcessingRow = 0 // Untuk onProgress
+            var processedRowCount = 0 // Sekarang ini adalah row count
+
+            // Gunakan PushbackInputStream untuk memungkinkan POI mendeteksi format file (xls vs xlsx)
+            // tanpa mengonsumsi stream jika kita perlu reset
+            val pushbackInputStream = if (inputStream.markSupported()) inputStream else PushbackInputStream(inputStream, 8)
 
             try {
-                val workbook: Workbook = if (isXlsx) {
-                    XSSFWorkbook(inputStream)
-                } else {
-                    // HSSFWorkbook(inputStream) // Aktifkan jika ingin membedakan .xls
-                    return@withContext ParseResult.Error("Format file .xls tidak didukung saat ini (gunakan .xlsx).", 0)
-                }
-
-                if (workbook.numberOfSheets == 0) {
-                    return@withContext ParseResult.Error("File Excel tidak memiliki sheet.", 0)
-                }
-
-                val sheet: Sheet = workbook.getSheetAt(0) // Ambil sheet pertama
-                val headerRow: Row? = sheet.getRow(0)
-
-                if (headerRow == null) {
-                    return@withContext ParseResult.Error("Sheet pertama dalam file Excel tidak memiliki baris header.", 0)
-                }
-
-                val columnIndices = mapExcelHeadersToIndices(headerRow)
-                if (!columnIndices.containsKey("ITEMCODE") ||
-                    !columnIndices.containsKey("TITLE") ||
-                    !columnIndices.containsKey("RFIDTAGHEX")) {
-                    return@withContext ParseResult.Error("Header Excel tidak valid. Pastikan kolom ITEMCODE, TITLE, RFIDTAGHEX ada.", 0)
-                }
-
-
-                val rowIterator = sheet.iterator()
-                if (rowIterator.hasNext()) { // Lewati baris header
-                    rowIterator.next()
-                }
-
-                while (rowIterator.hasNext()) {
-                    val row = rowIterator.next()
-                    currentProcessingRow = row.rowNum + 1 // Row num is 0-based
-                    onProgress?.invoke(currentProcessingRow)
-
-                    val itemCode = getCellStringValue(row.getCell(columnIndices["ITEMCODE"] ?: -1))
-                    val title = getCellStringValue(row.getCell(columnIndices["TITLE"] ?: -1))
-                    val rfidTagHex = getCellStringValue(row.getCell(columnIndices["RFIDTAGHEX"] ?: -1))
-                    val expectedLocation = getCellStringValue(row.getCell(columnIndices["EXPECTEDLOCATION"] ?: -1))
-                    val tid = getCellStringValue(row.getCell(columnIndices["TID"] ?: -1))
-
-
-                    if (itemCode.isNullOrBlank() || title.isNullOrBlank() || rfidTagHex.isNullOrBlank()) {
-                        warnings.add("Peringatan di baris $currentProcessingRow: ITEMCODE, TITLE, atau RFIDTAGHEX kosong. Baris dilewati.")
-                        continue
-                    }
-                    if (rfidTagHex.length < 8 || !rfidTagHex.matches(Regex("^[0-9a-fA-F]+$"))) {
-                        warnings.add("Peringatan di baris $currentProcessingRow: RFIDTAGHEX '$rfidTagHex' tidak valid. Baris dilewati.")
-                        continue
+                WorkbookFactory.create(pushbackInputStream).use { workbook ->
+                    if (workbook.numberOfSheets == 0) {
+                        warnings.add("File Excel tidak memiliki sheet.")
+                        return@withContext ParseResult.Success(emptyList(), warnings)
                     }
 
+                    val sheet: Sheet = workbook.getSheetAt(0) // Ambil sheet pertama
+                    val rowIterator = sheet.iterator()
 
-                    books.add(
-                        BookMaster(
-                            itemCode = itemCode,
-                            title = title,
-                            rfidTagHex = rfidTagHex.uppercase(),
-                            expectedLocation = expectedLocation,
-                            tid = tid
-                        )
-                    )
-                    if (books.size >= Constants.MAX_ROWS_TO_PARSE) {
-                        warnings.add("Mencapai batas maksimum ${Constants.MAX_ROWS_TO_PARSE} baris untuk diproses.")
-                        break
+                    if (!rowIterator.hasNext()) {
+                        warnings.add("Sheet pertama dalam file Excel kosong.")
+                        return@withContext ParseResult.Success(emptyList(), warnings)
                     }
-                }
-                workbook.close()
-                inputStream.close()
 
-                if (books.isEmpty() && currentProcessingRow > 1) {
-                    ParseResult.Error("Tidak ada data buku yang valid ditemukan di file Excel.", currentProcessingRow)
-                } else if (books.isEmpty() && currentProcessingRow <=1 && columnIndices.isNotEmpty()) {
-                    ParseResult.Error("File Excel hanya berisi header atau kosong.", currentProcessingRow)
-                }
-                else {
-                    ParseResult.Success(books, warnings)
-                }
+                    val headerRow = rowIterator.next()
+                    processedRowCount++
+                    onProgress?.invoke(processedRowCount)
 
-            } catch (e: Exception) {
-                Log.e(TAG, "Error parsing Excel file: ${e.message}", e)
-                ParseResult.Error("Terjadi kesalahan saat memproses file Excel: ${e.message}", currentProcessingRow)
-            }
-        }
-    }
+                    // Dapatkan indeks kolom berdasarkan nama header dari Constants
+                    val itemCodeIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.ITEM_CODE)
+                    val titleIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.TITLE)
+                    val callNumberIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.CALL_NUMBER)
+                    val collTypeNameIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.COLLECTION_TYPE_NAME)
+                    val inventoryCodeIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.INVENTORY_CODE)
+                    val receivedDateIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.RECEIVED_DATE)
+                    val locationNameIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.LOCATION_NAME)
+                    val orderDateIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.ORDER_DATE)
+                    val itemStatusNameIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.ITEM_STATUS_NAME)
+                    val siteIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.SITE)
+                    val sourceIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.SOURCE)
+                    val priceIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.PRICE)
+                    val priceCurrencyIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.PRICE_CURRENCY)
+                    val invoiceDateIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.INVOICE_DATE)
+                    val inputDateIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.INPUT_DATE)
+                    val lastUpdateIdx = getColumnIndex(headerRow, Constants.SlimsCsvHeaders.LAST_UPDATE)
 
-    private fun mapExcelHeadersToIndices(headerRow: Row): Map<String, Int> {
-        val map = mutableMapOf<String, Int>()
-        headerRow.forEach { cell ->
-            val headerText = getCellStringValue(cell)?.uppercase()?.trim()
-            if (headerText != null && Constants.DEFAULT_CSV_BOOK_HEADERS.contains(headerText)) {
-                map[headerText] = cell.columnIndex
-            }
-        }
-        return map
-    }
-
-    private fun getCellStringValue(cell: Cell?): String? {
-        if (cell == null) return null
-        return when (cell.cellType) {
-            CellType.STRING -> cell.stringCellValue?.trim()?.take(Constants.MAX_CELL_LENGTH)
-            CellType.NUMERIC -> {
-                // Cek apakah itu tanggal atau angka biasa
-                if (DateUtil.isCellDateFormatted(cell)) {
-                    cell.dateCellValue?.toString() // Atau format sesuai kebutuhan
-                } else {
-                    // Hindari .0 untuk angka integer
-                    val number = cell.numericCellValue
-                    if (number == number.toLong().toDouble()) {
-                        number.toLong().toString()
-                    } else {
-                        number.toString()
+                    if (itemCodeIdx == -1 || titleIdx == -1) {
+                        Log.e(TAG, "Header '${Constants.SlimsCsvHeaders.ITEM_CODE}' atau '${Constants.SlimsCsvHeaders.TITLE}' tidak ditemukan di sheet Excel.")
+                        return@withContext ParseResult.InvalidFormat("Header wajib tidak ditemukan.")
                     }
-                }?.take(Constants.MAX_CELL_LENGTH)
-            }
-            CellType.BOOLEAN -> cell.booleanCellValue.toString().take(Constants.MAX_CELL_LENGTH)
-            CellType.FORMULA -> { // Coba evaluasi formula, jika gagal ambil cached value
-                try {
-                    val evaluator = cell.sheet.workbook.creationHelper.createFormulaEvaluator()
-                    val cellValue = evaluator.evaluate(cell)
-                    when (cellValue.cellType) {
-                        CellType.STRING -> cellValue.stringValue?.trim()?.take(Constants.MAX_CELL_LENGTH)
-                        CellType.NUMERIC -> {
-                            val number = cellValue.numberValue
-                            if (number == number.toLong().toDouble()) {
-                                number.toLong().toString()
-                            } else {
-                                number.toString()
-                            }?.take(Constants.MAX_CELL_LENGTH)
+
+                    var currentDataRowNumber = 1 // Nomor baris data setelah header
+                    rowIterator.forEach { row ->
+                        processedRowCount++
+                        currentDataRowNumber++
+                        onProgress?.invoke(processedRowCount)
+
+                        try {
+                            val itemCode = getCellValueAsString(row.getCell(itemCodeIdx))
+                            val title = getCellValueAsString(row.getCell(titleIdx))
+
+                            if (itemCode.isNullOrBlank()) {
+                                warnings.add("Baris Excel ${currentDataRowNumber}: Dilewati karena '${Constants.SlimsCsvHeaders.ITEM_CODE}' kosong atau hanya spasi.")
+                                return@forEach // Lanjut ke baris berikutnya
+                            }
+                            if (title.isNullOrBlank()) {
+                                warnings.add("Baris Excel ${currentDataRowNumber} (Item Code: $itemCode): '${Constants.SlimsCsvHeaders.TITLE}' kosong atau hanya spasi, tetap diimpor dengan judul kosong.")
+                            }
+
+                            val rfidHex = itemCode.toEPC128Hex()
+
+                            books.add(
+                                BookMaster(
+                                    itemCode = itemCode,
+                                    title = title ?: "",
+                                    rfidTagHex = rfidHex,
+                                    tid = null, // Anda mungkin ingin membaca ini dari kolom lain jika ada
+                                    callNumber = getCellValueAsString(row.getCell(callNumberIdx))?.takeIf { it.isNotEmpty() && it.lowercase() != "nan" },
+                                    collectionType = getCellValueAsString(row.getCell(collTypeNameIdx))?.takeIf { it.isNotEmpty() },
+                                    inventoryCode = getCellValueAsString(row.getCell(inventoryCodeIdx))?.takeIf { it.isNotEmpty() },
+                                    receivedDate = getCellValueAsString(row.getCell(receivedDateIdx))?.takeIf { it.isNotEmpty() },
+                                    locationName = getCellValueAsString(row.getCell(locationNameIdx))?.takeIf { it.isNotEmpty() },
+                                    orderDate = getCellValueAsString(row.getCell(orderDateIdx))?.takeIf { it.isNotEmpty() },
+                                    slimsItemStatus = getCellValueAsString(row.getCell(itemStatusNameIdx))?.takeIf { it.isNotEmpty() && it.lowercase() != "nan" },
+                                    siteName = getCellValueAsString(row.getCell(siteIdx))?.takeIf { it.isNotEmpty() && it.lowercase() != "nan" },
+                                    source = getCellValueAsString(row.getCell(sourceIdx))?.takeIf { it.isNotEmpty() },
+                                    price = getCellValueAsString(row.getCell(priceIdx))?.takeIf { it.isNotEmpty() },
+                                    priceCurrency = getCellValueAsString(row.getCell(priceCurrencyIdx))?.takeIf { it.isNotEmpty() },
+                                    invoiceDate = getCellValueAsString(row.getCell(invoiceDateIdx))?.takeIf { it.isNotEmpty() },
+                                    inputDate = getCellValueAsString(row.getCell(inputDateIdx))?.takeIf { it.isNotEmpty() },
+                                    lastUpdate = getCellValueAsString(row.getCell(lastUpdateIdx))?.takeIf { it.isNotEmpty() },
+                                    pairingStatus = PairingStatus.NOT_PAIRED // Default status
+                                )
+                            )
+                        } catch (e: IllegalStateException) { // Dapat terjadi jika tipe sel tidak seperti yang diharapkan saat getCell
+                            warnings.add("Baris Excel ${currentDataRowNumber}: Dilewati karena tipe data sel tidak valid atau formula error. Error: ${e.message}")
+                            Log.w(TAG, "Baris Excel ${currentDataRowNumber}: Masalah saat membaca sel", e)
                         }
-                        CellType.BOOLEAN -> cellValue.booleanValue.toString().take(Constants.MAX_CELL_LENGTH)
-                        else -> cell.toString().trim().take(Constants.MAX_CELL_LENGTH) // Fallback
+                        catch (e: Exception) {
+                            warnings.add("Baris Excel ${currentDataRowNumber}: Error saat parsing baris. Pesan: ${e.message}")
+                            Log.e(TAG, "Baris Excel ${currentDataRowNumber}: Generic error - Row content might be: ${row.joinToString("|") { getCellValueAsString(it) ?: "" }}", e)
+                        }
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Could not evaluate formula in cell $cell: ${e.message}")
-                    // Fallback to cached formula result string if evaluation fails
-                    try { cell.stringCellValue?.trim()?.take(Constants.MAX_CELL_LENGTH) } catch (ex: Exception) { null }
+                } // Akhir dari Workbook.use
+                ParseResult.Success(books, warnings)
+            } catch (e: org.apache.poi.poifs.filesystem.OfficeXmlFileException) {
+                Log.e(TAG, "Error parsing Excel: File kemungkinan adalah format XML lama (misalnya, Excel 2003 XML) yang tidak didukung langsung oleh XSSFWorkbook/HSSFWorkbook via WorkbookFactory.create. Coba simpan sebagai .xlsx atau .xls standar. Pesan: ${e.message}", e)
+                ParseResult.Error("Gagal memproses file Excel. Format mungkin tidak didukung atau file rusak: ${e.message}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fatal saat parsing Excel: ${e.message}", e)
+                ParseResult.Error("Gagal memproses file Excel: ${e.message}")
+            } finally {
+                // Tutup input stream jika tidak ditutup oleh WorkbookFactory.create
+                // Namun, Workbook.use{} harusnya sudah menanganinya.
+                // Jika Anda menggunakan PushbackInputStream dan tidak yakin, Anda bisa menutupnya di sini.
+                try {
+                    pushbackInputStream.close()
+                } catch (ioe: IOException) {
+                    Log.w(TAG, "Gagal menutup pushbackInputStream", ioe)
                 }
             }
-            else -> cell.toString().trim().take(Constants.MAX_CELL_LENGTH) // Atau null jika ingin lebih ketat
         }
     }
 }
