@@ -446,4 +446,6 @@
     <string name="export_error_unknown_mime_type">Tipe MIME tidak diketahui untuk format: %s</string>
     <string name="export_error_opening_uri_stream">Gagal membuka stream dari URI: %s</string>
     <string name="export_error_opening_file_stream">Gagal membuka stream untuk file: %s</string>
+    <string name="tab_title_read_tag">Read</string>
+    <string name="tab_title_write_tag">Write</string>
 </resources>

@@ -3,7 +3,7 @@ package com.example.aplikasistockopnameperpus.util.parser
 import android.util.Log
 import com.example.aplikasistockopnameperpus.data.database.BookMaster
 import com.example.aplikasistockopnameperpus.data.database.PairingStatus
-import com.example.aplikasistockopnameperpus.data.database.toEPC128Hex
+import com.example.aplikasistockopnameperpus.data.database.toEPC96Hex
 import com.example.aplikasistockopnameperpus.util.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -86,7 +86,7 @@ class TxtFileParser(private val delimiter: Char = ',') : FileParser { // Default
                                 warnings.add("Baris ${currentDataLineNumber} (Item Code: $itemCode): '${Constants.SlimsCsvHeaders.TITLE}' kosong atau hanya spasi, tetap diimpor dengan judul kosong.")
                             }
 
-                            val rfidHex = itemCode.toEPC128Hex()
+                            val rfidHex = itemCode.toEPC96Hex()
 
                             books.add(
                                 BookMaster(

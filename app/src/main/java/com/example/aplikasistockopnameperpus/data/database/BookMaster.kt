@@ -76,15 +76,16 @@ enum class OpnameStatus {
 // Fungsi utilitas untuk konversi String ke Hex EPC 128-bit (32 karakter hex)
 // Ini adalah contoh sederhana, Anda mungkin perlu menyesuaikannya agar sesuai dengan
 // standar EPC atau kebutuhan spesifik Anda, terutama padding dan panjang.
-fun String.toEPC128Hex(): String {
+fun String.toEPC96Hex(): String {
     val bytes = this.toByteArray(StandardCharsets.UTF_8)
     val hexChars = bytes.joinToString("") { "%02x".format(it) }
-    // EPC 128 bit = 16 byte = 32 karakter hex.
+    // EPC 96 bit = 12 byte = 24 karakter hex.
     // Jika lebih pendek, tambahkan padding (misalnya '0' di akhir).
     // Jika lebih panjang, potong. Ini adalah strategi sederhana.
-    return if (hexChars.length >= 32) {
-        hexChars.substring(0, 32)
+    val targetHexLength = 24 // Target panjang untuk 96 bit EPC
+    return if (hexChars.length >= targetHexLength) {
+        hexChars.substring(0, targetHexLength)
     } else {
-        hexChars.padEnd(32, '0')
+        hexChars.padEnd(targetHexLength, '0')
     }
 }

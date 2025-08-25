@@ -59,6 +59,8 @@ dependencies {
     // Untuk semua file .jar dan .aar di dalam direktori libs
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
 
+    implementation("com.opencsv:opencsv:5.7.1")
+
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.2") // Ganti dengan versi terbaru jika perlu
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
     implementation("androidx.activity:activity-ktx:1.9.0") // Ganti dengan versi terbaru jika perlu

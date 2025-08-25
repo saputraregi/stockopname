@@ -72,4 +72,5 @@
     <color name="md_theme_surfaceContainer">#F3EDF7</color>
     <color name="md_theme_surfaceContainerHigh">#ECE6F0</color>
     <color name="md_theme_surfaceContainerHighest">#E6E0E9</color>
+    <color name="design_default_color_primary">#FF6200EE</color>
 </resources>
