@@ -34,7 +34,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:hint="Kode Item Buku"
+                    android:hint="Kode Item Buku (Scan atau Ketik)"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toStartOf="@+id/button_scan_barcode"
@@ -46,7 +46,7 @@
                         android:id="@+id/editText_item_code"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text"
+                        android:inputType="textCapCharacters"
                         android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -69,7 +69,7 @@
             android:id="@+id/textView_process_status_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Status:"
+            android:text="Status Proses:"
             android:layout_marginTop="16dp"
             android:textStyle="bold"
             app:layout_constraintTop_toBottomOf="@+id/cardView_input_item_code"
@@ -81,6 +81,7 @@
             android:layout_height="wrap_content"
             tools:text="Silakan scan atau masukkan kode item buku."
             android:layout_marginStart="8dp"
+            android:textAppearance="?attr/textAppearanceBody2"
             app:layout_constraintTop_toTopOf="@+id/textView_process_status_label"
             app:layout_constraintBottom_toBottomOf="@+id/textView_process_status_label"
             app:layout_constraintStart_toEndOf="@+id/textView_process_status_label"
@@ -91,7 +92,7 @@
             android:id="@+id/layout_book_details"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             app:cardCornerRadius="8dp"
             app:cardElevation="4dp"
             android:visibility="gone"
@@ -106,52 +107,49 @@
                 android:padding="16dp">
 
                 <TextView
+                    android:id="@+id/textView_item_code_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Kode Item:"
+                    android:textStyle="bold"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <TextView
+                    android:id="@+id/textView_item_code_value"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    tools:text="B00001XYZ"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintTop_toTopOf="@+id/textView_item_code_label"
+                    app:layout_constraintStart_toEndOf="@+id/textView_item_code_label"
+                    app:layout_constraintEnd_toEndOf="parent"/>
+
+                <TextView
                     android:id="@+id/textView_book_title_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Judul:"
+                    android:text="Judul Buku:"
+                    android:layout_marginTop="8dp"
                     android:textStyle="bold"
-                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_item_code_value"
                     app:layout_constraintStart_toStartOf="parent" />
 
                 <TextView
                     android:id="@+id/textView_book_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    tools:text="Belajar Android Jetpack Compose"
+                    tools:text="Belajar Android Jetpack Compose Modern"
                     android:layout_marginStart="8dp"
                     app:layout_constraintTop_toTopOf="@+id/textView_book_title_label"
                     app:layout_constraintStart_toEndOf="@+id/textView_book_title_label"
                     app:layout_constraintEnd_toEndOf="parent"/>
 
-                <!-- Penulis tidak lagi ditampilkan sesuai kode Activity -->
-                <!--
-                <TextView
-                    android:id="@+id/textView_book_author_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Penulis:"
-                    android:textStyle="bold"
-                    android:layout_marginTop="8dp"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_book_title"
-                    app:layout_constraintStart_toStartOf="parent" />
-
-                <TextView
-                    android:id="@+id/textView_book_author"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    tools:text="John Doe"
-                    android:layout_marginStart="8dp"
-                    app:layout_constraintTop_toTopOf="@+id/textView_book_author_label"
-                    app:layout_constraintStart_toEndOf="@+id/textView_book_author_label"
-                    app:layout_constraintEnd_toEndOf="parent"/>
-                -->
-
                 <TextView
                     android:id="@+id/textView_current_rfid_status_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Status RFID:"
+                    android:text="Status Pairing:"
                     android:textStyle="bold"
                     android:layout_marginTop="8dp"
                     app:layout_constraintTop_toBottomOf="@+id/textView_book_title"
@@ -171,7 +169,7 @@
                     android:id="@+id/textView_current_rfid_tag_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Tag RFID:"
+                    android:text="EPC (Database):"
                     android:textStyle="bold"
                     android:layout_marginTop="8dp"
                     app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_status"
@@ -181,21 +179,41 @@
                     android:id="@+id/textView_current_rfid_tag"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    tools:text="TIDAK ADA"
+                    tools:text="423030303033000000000000"
                     android:layout_marginStart="8dp"
                     app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_tag_label"
                     app:layout_constraintStart_toEndOf="@+id/textView_current_rfid_tag_label"
                     app:layout_constraintEnd_toEndOf="parent"/>
 
+                <TextView
+                    android:id="@+id/textView_current_tid_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TID (Database):"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_tag"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <TextView
+                    android:id="@+id/textView_current_tid"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    tools:text="E28011700000020B1A76269C"
+                    android:layout_marginStart="8dp"
+                    app:layout_constraintTop_toTopOf="@+id/textView_current_tid_label"
+                    app:layout_constraintStart_toEndOf="@+id/textView_current_tid_label"
+                    app:layout_constraintEnd_toEndOf="parent"/>
+
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Informasi EPC yang Terbaca Selama Proses (Awalnya GONE) -->
+        <!-- Informasi Tag yang Terbaca Selama Proses -->
         <TextView
-            android:id="@+id/textView_scanned_epc_label"
+            android:id="@+id/textView_scanned_tid_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="EPC Terbaca:"
+            android:text="TID Terbaca (Tag):"
             android:textStyle="bold"
             android:layout_marginTop="12dp"
             android:visibility="gone"
@@ -204,10 +222,35 @@
             app:layout_constraintStart_toStartOf="parent"/>
 
         <TextView
+            android:id="@+id/textView_scanned_tid_value"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            tools:text="E200341201300000000000AA"
+            android:layout_marginStart="8dp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintTop_toTopOf="@+id/textView_scanned_tid_label"
+            app:layout_constraintBottom_toBottomOf="@+id/textView_scanned_tid_label"
+            app:layout_constraintStart_toEndOf="@+id/textView_scanned_tid_label"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <TextView
+            android:id="@+id/textView_scanned_epc_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="EPC Terbaca (Tag):"
+            android:textStyle="bold"
+            android:layout_marginTop="4dp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintTop_toBottomOf="@+id/textView_scanned_tid_value"
+            app:layout_constraintStart_toStartOf="parent"/>
+
+        <TextView
             android:id="@+id/textView_scanned_epc_value"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            tools:text="E28011700000020B1A76269C"
+            tools:text="4A4A4A4A4A4A4A4A4A4A4A4A"
             android:layout_marginStart="8dp"
             android:visibility="gone"
             tools:visibility="visible"
@@ -252,13 +295,17 @@
                 android:text="Bersihkan"
                 android:layout_marginEnd="8dp"/>
 
+            <!-- Tombol Aksi Utama yang Teks dan Fungsinya Berubah -->
             <Button
                 android:id="@+id/button_start_tagging"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="2"
-                android:text="Mulai Proses Penandaan"
-                android:enabled="false"/> <!-- Awalnya disabled -->
+                tools:text="Mulai Baca TID"
+                android:text="Aksi Berikutnya"
+                android:visibility="gone"
+                tools:visibility="visible"
+                android:enabled="false"/> <!-- Awalnya disabled, diatur oleh Activity -->
 
         </LinearLayout>
 

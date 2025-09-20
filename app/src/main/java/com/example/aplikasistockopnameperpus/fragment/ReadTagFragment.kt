@@ -1,6 +1,8 @@
 package com.example.aplikasistockopnameperpus.fragment
 
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,22 +10,33 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.recyclerview.widget.DiffUtil // Import DiffUtil
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aplikasistockopnameperpus.R
+import com.example.aplikasistockopnameperpus.ReadWriteTagActivity // Import Activity Induk
 import com.example.aplikasistockopnameperpus.databinding.FragmentReadTagBinding
+import com.example.aplikasistockopnameperpus.interfaces.PhysicalTriggerListener // Import interface
 import com.example.aplikasistockopnameperpus.viewmodel.ReadWriteTagViewModel
-import java.util.Collections // Untuk Collections.min jika menggunakan minOf tidak tersedia (tapi seharusnya tersedia)
-import kotlin.math.min // Alternatif untuk minOf
 
-class ReadTagFragment : Fragment() {
+class ReadTagFragment : Fragment(), PhysicalTriggerListener { // Implementasi interface
 
     private var _binding: FragmentReadTagBinding? = null
     private val binding get() = _binding!!
 
     private val viewModel: ReadWriteTagViewModel by activityViewModels()
     private lateinit var epcListAdapter: MySimpleStringAdapter
+
+    private var parentActivity: ReadWriteTagActivity? = null // Referensi ke Activity
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (context is ReadWriteTagActivity) {
+            parentActivity = context
+        } else {
+            throw RuntimeException("$context must be ReadWriteTagActivity")
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -37,6 +50,26 @@ class ReadTagFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupUI()
         observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d("ReadTagFragment", "onResume - Mendaftarkan diri sebagai active trigger listener.")
+        parentActivity?.setActiveTriggerListener(this)
+    }
+
+    // --- HANYA SATU IMPLEMENTASI onPause YANG BENAR ---
+    override fun onPause() {
+        super.onPause()
+        Log.d("ReadTagFragment", "onPause - Membatalkan pendaftaran listener dan menghentikan pembacaan.")
+        parentActivity?.setActiveTriggerListener(null)
+        viewModel.stopContinuousReading() // Panggil stopContinuousReading dari ViewModel
+    }
+    // ---------------------------------------------------
+
+    override fun onDetach() {
+        super.onDetach()
+        parentActivity = null // Hindari memory leak
     }
 
     private fun setupUI() {
@@ -69,57 +102,63 @@ class ReadTagFragment : Fragment() {
         }
 
         binding.buttonStartRead.setOnClickListener {
-            val isContinuous = binding.radioButtonContinuousRead.isChecked
-            viewModel.startReading(isContinuous)
+            Log.d("ReadTagFragment", "Tombol UI Start/Single Read diklik.")
+            handleReadAction()
         }
 
         binding.buttonStopRead.setOnClickListener {
+            Log.d("ReadTagFragment", "Tombol UI Stop Read diklik.")
             viewModel.stopContinuousReading()
         }
 
         binding.buttonClearList.setOnClickListener {
+            Log.d("ReadTagFragment", "Tombol UI Clear List diklik.")
             epcListAdapter.clearItems()
             viewModel.clearContinuousListFromUI()
             binding.textViewLastEpcValue.text = ""
         }
     }
 
+    private fun handleReadAction() {
+        if (!isAdded || context == null) {
+            Log.w("ReadTagFragment", "Aksi baca diabaikan, fragment tidak ter-attach atau context null.")
+            return
+        }
+
+        val isContinuousMode = binding.radioButtonContinuousRead.isChecked
+        val isCurrentlyReading = viewModel.isReadingContinuous.value ?: false
+        val isLoading = viewModel.isLoading.value ?: false
+
+        if (isCurrentlyReading || (isLoading && !isContinuousMode)) {
+            Log.d("ReadTagFragment", "handleReadAction: Menghentikan pembacaan.")
+            viewModel.stopContinuousReading()
+        } else {
+            Log.d("ReadTagFragment", "handleReadAction: Memulai pembacaan (kontinu: $isContinuousMode).")
+            viewModel.startReading(isContinuousMode)
+        }
+    }
+
     private fun observeViewModel() {
         viewModel.lastReadEpc.observe(viewLifecycleOwner) { epc ->
-            binding.textViewLastEpcValue.text = epc ?: ""
-            if (!viewModel.isReadingContinuous.value!! && epc.isNullOrEmpty() && binding.textViewStatus.text.toString() == getString(R.string.status_idle)) {
-                // binding.textViewLastEpcValue.text = getString(R.string.no_tag_found_placeholder)
+            if (! (viewModel.isLoading.value == true && viewModel.isReadingContinuous.value == true && epc.isNullOrEmpty()) ) {
+                binding.textViewLastEpcValue.text = epc ?: ""
             }
         }
 
         viewModel.continuousEpcList.observe(viewLifecycleOwner) { epcSet ->
-            epcListAdapter.updateItems(epcSet?.toList()?.sortedDescending() ?: emptyList())
-        }
-
-        viewModel.isReadingContinuous.observe(viewLifecycleOwner) { isReading ->
-            binding.buttonStartRead.isEnabled = !isReading
             if (binding.radioButtonContinuousRead.isChecked) {
-                binding.buttonStopRead.isEnabled = isReading
+                epcListAdapter.updateItems(epcSet?.toList()?.sortedDescending() ?: emptyList())
             } else {
-                binding.buttonStopRead.isEnabled = false
-            }
-
-            if (isReading) {
-                binding.textViewStatus.text = getString(R.string.status_membaca)
-                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorScanning, requireActivity().theme))
-            } else {
-                binding.textViewStatus.text = getString(R.string.status_idle)
-                binding.textViewStatus.setTextColor(resources.getColor(R.color.colorIdle, requireActivity().theme))
-                if (binding.textViewLastEpcValue.text == getString(R.string.status_membaca) ||
-                    (viewModel.lastReadEpc.value.isNullOrEmpty() && !binding.radioButtonContinuousRead.isChecked)) {
-                    // binding.textViewLastEpcValue.text = ""
-                }
+                epcListAdapter.clearItems()
             }
         }
+
+        viewModel.isLoading.observe(viewLifecycleOwner) { updateUIBasedOnScanState() }
+        viewModel.isReadingContinuous.observe(viewLifecycleOwner) { updateUIBasedOnScanState() }
 
         viewModel.readError.observe(viewLifecycleOwner) { errorMsg ->
             errorMsg?.let {
-                if (isAdded) {
+                if (isAdded && context != null) {
                     Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
                 }
                 binding.textViewStatus.text = getString(R.string.status_error)
@@ -128,14 +167,65 @@ class ReadTagFragment : Fragment() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        viewModel.stopContinuousReading()
+    private fun updateUIBasedOnScanState() {
+        val isLoading = viewModel.isLoading.value ?: false
+        val isReadingContinuous = viewModel.isReadingContinuous.value ?: false
+
+        if (isLoading || isReadingContinuous) {
+            binding.textViewStatus.text = getString(R.string.status_membaca)
+            binding.textViewStatus.setTextColor(resources.getColor(R.color.colorScanning, requireActivity().theme))
+
+            if (binding.radioButtonContinuousRead.isChecked) {
+                binding.buttonStartRead.text = getString(R.string.button_stop_read)
+                binding.buttonStartRead.isEnabled = true
+                binding.buttonStopRead.visibility = View.GONE
+            } else {
+                binding.buttonStartRead.text = getString(R.string.status_membaca)
+                binding.buttonStartRead.isEnabled = false
+                binding.buttonStopRead.visibility = View.GONE
+            }
+            binding.radioGroupReadMode.isEnabled = false
+            (0 until binding.radioGroupReadMode.childCount).forEach {
+                binding.radioGroupReadMode.getChildAt(it).isEnabled = false
+            }
+        } else {
+            binding.textViewStatus.text = getString(R.string.status_idle)
+            binding.textViewStatus.setTextColor(resources.getColor(R.color.colorIdle, requireActivity().theme))
+
+            if (binding.radioButtonContinuousRead.isChecked) {
+                binding.buttonStartRead.text = getString(R.string.mulai_baca_kontinu)
+                binding.buttonStopRead.visibility = View.VISIBLE
+                binding.buttonStopRead.isEnabled = false
+            } else {
+                binding.buttonStartRead.text = getString(R.string.baca_tunggal)
+                binding.buttonStopRead.visibility = View.GONE
+            }
+            binding.buttonStartRead.isEnabled = true
+            binding.radioGroupReadMode.isEnabled = true
+            (0 until binding.radioGroupReadMode.childCount).forEach {
+                binding.radioGroupReadMode.getChildAt(it).isEnabled = true
+            }
+
+            if (binding.textViewLastEpcValue.text == getString(R.string.status_membaca) &&
+                !binding.radioButtonContinuousRead.isChecked && viewModel.lastReadEpc.value.isNullOrEmpty()) {
+                // binding.textViewLastEpcValue.text = getString(R.string.no_tag_found_placeholder)
+            }
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        Log.d("ReadTagFragment", "onDestroyView.")
+    }
+
+    override fun onPhysicalTriggerPressed() {
+        Log.i("ReadTagFragment", "Tombol fisik ditekan di ReadTagFragment.")
+        if (!isAdded || context == null) {
+            Log.w("ReadTagFragment", "Tombol fisik diabaikan, fragment tidak ter-attach atau context null.")
+            return
+        }
+        handleReadAction()
     }
 
     companion object {
@@ -162,47 +252,12 @@ class ReadTagFragment : Fragment() {
 
         override fun getItemCount() = items.size
 
-        /**
-         * Updates the items in the adapter.
-         * For better performance and animations, consider using DiffUtil.
-         */
         fun updateItems(newItems: List<String>) {
-            val oldSize = this.items.size
-            // Hitung commonSize di awal setelah oldSize dan newItems.size diketahui
-            val commonSizeValue = min(oldSize, newItems.size) // Menggunakan min dari kotlin.math
-
-            // Jika Anda ingin tetap menggunakan logika notifikasi manual (kurang direkomendasikan untuk kasus kompleks):
-            this.items.clear()
-            this.items.addAll(newItems)
-
-            if (oldSize > newItems.size) {
-                // Notifikasi untuk item yang dihapus
-                notifyItemRangeRemoved(newItems.size, oldSize - newItems.size)
-                // Notifikasi untuk item yang mungkin berubah kontennya (yang tersisa)
-                if (commonSizeValue > 0) {
-                    notifyItemRangeChanged(0, commonSizeValue)
-                }
-            } else if (newItems.size > oldSize) {
-                // Notifikasi untuk item yang baru ditambahkan
-                notifyItemRangeInserted(oldSize, newItems.size - oldSize)
-                // Notifikasi untuk item yang mungkin berubah kontennya (yang lama)
-                if (commonSizeValue > 0) {
-                    notifyItemRangeChanged(0, commonSizeValue)
-                }
-            } else { // Ukuran sama (oldSize == newItems.size), mungkin konten berubah
-                if (commonSizeValue > 0) {
-                    notifyItemRangeChanged(0, commonSizeValue)
-                }
-            }
-
-            // REKOMENDASI: Gunakan DiffUtil untuk pembaruan yang lebih efisien dan benar
-
             val diffCallback = MyStringDiffCallback(this.items, newItems)
             val diffResult = DiffUtil.calculateDiff(diffCallback)
             this.items.clear()
             this.items.addAll(newItems)
             diffResult.dispatchUpdatesTo(this)
-
         }
 
         fun clearItems() {
@@ -213,7 +268,6 @@ class ReadTagFragment : Fragment() {
             }
         }
 
-        // Contoh implementasi DiffUtil.Callback (jika Anda ingin menggunakannya)
         private class MyStringDiffCallback(
             private val oldList: List<String>,
             private val newList: List<String>
@@ -221,14 +275,11 @@ class ReadTagFragment : Fragment() {
             override fun getOldListSize(): Int = oldList.size
             override fun getNewListSize(): Int = newList.size
             override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                // Jika string Anda unik, ini cukup. Jika tidak, Anda mungkin perlu ID.
                 return oldList[oldItemPosition] == newList[newItemPosition]
             }
             override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                // Untuk string, jika itemnya sama, kontennya juga sama.
                 return oldList[oldItemPosition] == newList[newItemPosition]
             }
         }
     }
 }
-

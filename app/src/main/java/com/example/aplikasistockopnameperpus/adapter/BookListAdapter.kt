@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.aplikasistockopnameperpus.R // Mungkin tidak dibutuhkan langsung di sini
 import com.example.aplikasistockopnameperpus.databinding.ItemBookRowBinding
 import com.example.aplikasistockopnameperpus.viewmodel.BookMasterDisplayWrapper // IMPORT WRAPPER ANDA
+import com.example.aplikasistockopnameperpus.data.database.OpnameStatus
 
 class BookListAdapter(
     private val onItemClick: (BookMasterDisplayWrapper) -> Unit,
@@ -33,6 +34,16 @@ class BookListAdapter(
             onItemLongClick: (BookMasterDisplayWrapper) -> Boolean
         ) {
             val bookMaster = wrapper.bookMaster // Akses BookMaster asli jika masih ada properti yg hanya di sana
+
+            // ... di dalam bind() setelah val bookMaster = wrapper.bookMaster
+            val statusIconResId = when (bookMaster.opnameStatus) {
+                OpnameStatus.FOUND -> R.drawable.ic_check_circle_green // Buat drawable ini
+                OpnameStatus.MISSING -> R.drawable.ic_error_outline_red // Buat drawable ini
+                OpnameStatus.NEW_ITEM -> R.drawable.ic_add_circle_blue // Buat drawable ini
+                OpnameStatus.NOT_SCANNED -> R.drawable.ic_hourglass_empty_gray // Buat drawable ini
+                // else -> R.drawable.ic_help_outline_gray // Default jika ada status lain
+            }
+            binding.imageViewStatusIcon.setImageResource(statusIconResId)
 
             binding.textViewItemCode.text = bookMaster.itemCode
             binding.textViewBookTitle.text = bookMaster.title

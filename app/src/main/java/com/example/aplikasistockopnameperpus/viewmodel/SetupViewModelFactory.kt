@@ -1,5 +1,5 @@
 // SetupViewModelFactory.kt
-package com.example.aplikasistockopnameperpus.viewmodel // Sesuaikan
+/*package com.example.aplikasistockopnameperpus.viewmodel // Sesuaikan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -15,3 +15,4 @@ class SetupViewModelFactory(private val readerInstance: Any?) : ViewModelProvide
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+*/

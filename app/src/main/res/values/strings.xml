@@ -8,7 +8,7 @@
     <string name="image2_description">Cookies</string>
     <string name="image3_description">Cake</string>
     <string name="results_placeholder">(Results will appear here)</string>
-    <string name="title_activity_uhf_init">Inisialisasi UHF</string>
+    <string name="title_activity_uhf_init">Aplikasi Stock Opname Perpus</string>
     <string name="title_activity_stock_opname">Stock Opname</string>
     <string name="title_activity_import_export">Import/Export</string>
     <string name="title_activity_report">Report Opname</string>
@@ -418,6 +418,7 @@
     <string name="action_mark_missing">Tandai sebagai Hilang</string>"
     <string name="error_opening_import_export_page">Gagal membuka halaman Import/Export</string>
     <string name="toast_session_name_cannot_be_empty">Nama sesi opname tidak boleh kosong.</string>
+    <string name="toast_new_session_started">Sesi opname baru dimulai.</string>
     <string name="toast_session_name_updated">Nama sesi opname berhasil diperbarui.</string>
     <string name="stop_scan_before_new_session">Hentikan pemindaian sebelum memulai sesi baru.</string>"
     <string name="dialog_new_session_title">Mulai sesi baru?</string>
@@ -448,4 +449,207 @@
     <string name="export_error_opening_file_stream">Gagal membuka stream untuk file: %s</string>
     <string name="tab_title_read_tag">Read</string>
     <string name="tab_title_write_tag">Write</string>
+    <string name="status_radar_searching_all">Mencari semua tag</string>
+    <string name="status_radar_searching_target">Mencari tag target: %s</string>
+    <string name="uhf_scan_finished_or_stopped">Scan UHF selesai atau dihentikan.</string>
+    <string name="uhf_scan_stopping_user">Scan UHF dihentikan oleh pengguna.</string>
+    <string name="error_radar_active_stop_first">Error: Radar aktif. Hentikan terlebih dahulu.</string>
+    <string name="scan_stopped_before_saving_wait">Scan dihentikan sebelum menyimpan.</string>
+    <string name="error_prefix_colon">Error: %s</string>
+        <!-- ... string lain ... -->
+    <string name="hint_epc_target_radar">Masukkan EPC atau Pilih dari Daftar</string>
+    <string name="button_pilih_epc">Pilih</string>
+    <string name="status_radar_idle_search_all">Radar Idle (Siap Cari Semua)</string>
+    <string name="status_radar_idle_search_target">Radar Idle (Target: %s)</string>
+    <string name="label_search_range_radar">Jangkauan Pencarian</string>
+    <string name="text_range_min_radar">Semua</string> <!-- Contoh untuk progress 0 -->
+    <string name="text_range_max_radar">Spesifik</string> <!-- Contoh untuk progress > 0 -->
+    <string name="button_start_tracking_radar">Mulai Lacak</string>
+    <string name="button_stop_tracking_radar">Hentikan</string>
+    <string name="toast_epc_selected">EPC Dipilih: %s</string>
+
+        <!-- String untuk SelectTagDialogFragment jika Anda menggunakannya -->
+    <string name="title_select_rfid_tag_dialog">Pilih Tag RFID dari Buku</string>
+    <string name="action_cancel">Batal</string>
+    <string name="error_loading_books_message">Error: %s</string>
+    <string name="message_no_books_found_or_tagged">Tidak ada buku yang cocok atau sudah memiliki RFID.</string>
+    <!-- Status Opname Disederhanakan -->
+    <string name="opname_status_not_scanned_simplified">Belum Discan</string>
+    <string name="opname_status_found_simplified">DITEMUKAN</string>
+    <string name="opname_status_missing_simplified">HILANG</string> <!-- Bisa sama dengan yang lama -->
+    <string name="opname_status_new_item_simplified">ITEM BARU</string> <!-- Bisa sama dengan yang lama -->
+
+    <string name="opname_last_seen_at_location_prefix_short">di %s</string> <!-- Info lokasi scan -->
+
+    <!-- Pesan Scan Disederhanakan -->
+    <string name="scan_already_processed_simplified">%1$s %2$s sudah diproses: %3$s</string>
+    <string name="scan_success_item_found_simplified">%1$s %2$s ditemukan: %3$s (di %4$s)</string>
+    <string name="scan_new_item_added_to_master_simplified">Item baru %s ditambahkan ke master</string>
+    <string name="scan_unexpected_already_logged_simplified">Item baru %s sudah dicatat</string>
+
+
+    <!-- Filter Disederhanakan (sesuaikan dengan arrays.xml Anda) -->
+    <string name="filter_found_simplified">Ditemukan</string>
+    <string name="filter_not_found_yet_simplified">Belum Discan</string>
+    <!-- Hapus string untuk filter_misplaced -->
+    <string name="filter_new_or_unexpected_simplified">Item Baru/Tak Terduga</string>
+    <string name="filter_missing_final_simplified">Hilang (Final)</string>
+
+    <!-- Pesan Lain -->
+    <string name="default_scan_location_rfid">Scan RFID</string>
+    <string name="no_data_changes_to_save">Tidak ada perubahan data untuk disimpan.</string>
+
+    <!-- Jika Anda membuat array filter baru -->
+    <string-array name="filter_status_options_simplified">
+        <item>@string/filter_all</item>
+        <item>@string/filter_found_simplified</item>
+        <item>@string/filter_not_found_yet_simplified</item>
+        <item>@string/filter_new_or_unexpected_simplified</item>
+        <item>@string/filter_missing_final_simplified</item>
+    </string-array>
+    <string name="hint_select_region">Silakan pilih region</string>
+    <string name="hint_enter_freq_hopping_value">Silakan masukkan nilai freq hopping</string>
+        <!-- Judul Activity (jika Anda menggunakan Toolbar) -->
+        <string name="title_activity_book_tagging">Penandaan Buku RFID</string>
+
+        <!-- Hint dan Label untuk Input & Status -->
+        <string name="hint_item_code_scan_or_type">Kode Item Buku (Scan atau Ketik)</string>
+        <string name="label_process_status">Status Proses:</string>
+        <string name="status_ready">Siap.</string>
+
+        <!-- Tombol Utama dan Aksi -->
+        <string name="button_scan">Scan</string>
+        <string name="button_clear">Bersihkan</string>
+        <string name="button_default_action">Lanjutkan</string> <!-- Teks default untuk tombol aksi utama -->
+        <string name="button_start_tagging_process_untagged">Mulai Proses Tag</string>
+        <string name="button_reprocess_tag">Proses Ulang Tag Ini</string>
+        <string name="button_scan_tag_for_tid">Scan Tag (Baca TID)</string> <!-- Jika AWAITING_TAG_FOR_TID_READ digunakan -->
+        <string name="button_reading_tid">Membaca TID…</string>
+        <string name="button_processing_tid">Memproses TID…</string> <!-- Jika TID_READ_AWAITING_EPC_CONFIRM digunakan -->
+        <string name="button_reading_epc">Membaca EPC…</string>
+        <string name="button_confirm_write_tag">YA, TULIS TAG</string>
+        <string name="button_writing_to_tag">Menulis ke Tag…</string>
+        <string name="button_retry_process">Coba Lagi Proses</string>
+        <string name="button_start_initial">Mulai</string> <!-- Jika tidak ada buku saat error -->
+        <!-- <string name="button_search">Cari</string> --> <!-- Jika ada tombol search manual -->
+        <!-- <string name="button_cancel_operation">Batal Operasi</string> --> <!-- Jika ada tombol batal terpisah -->
+
+
+        <!-- Label untuk Detail Buku dari Database -->
+        <string name="label_item_code">Kode Item:</string>
+        <string name="label_book_title">Judul Buku:</string>
+        <string name="label_pairing_status">Status Pairing:</string>
+        <string name="label_epc_database">EPC (Database):</string>
+        <string name="label_tid_database">TID (Database):</string>
+
+        <!-- Label untuk Informasi Tag yang Terbaca dari Reader -->
+        <string name="label_tid_scanned_on_tag">TID Terbaca (Tag):</string>
+        <string name="label_epc_scanned_on_tag">EPC Terbaca (Tag):</string> <!-- Default, bisa diganti oleh Activity -->
+        <string name="label_epc_current_on_tag">EPC di Tag:</string>
+        <string name="label_epc_target_to_write">Target EPC:</string>
+        <string name="label_epc_newly_written">EPC Baru:</string>
+
+        <!-- Status Pairing (untuk ditampilkan di UI dari enum PairingStatus) -->
+        <string name="status_pairing_not_paired">BELUM DITAG</string>
+        <string name="status_pairing_pending">PAIRING DITUNDA</string>
+        <string name="status_pairing_write_pending">MENUNGGU TULIS EPC</string>
+        <string name="status_pairing_write_success">BERHASIL DITAG</string>
+        <string name="status_pairing_write_failed">GAGAL TULIS EPC</string> <!-- Dulu PAIRED_WRITE_FAILED -->
+        <string name="status_pairing_failed">GAGAL PAIRING</string>
+        <string name="status_no_rfid_data">TIDAK ADA</string>
+        <string name="status_no_tid_data">TID BELUM ADA</string>
+
+        <!-- Pesan Toast -->
+        <string name="toast_retrying_process">Mencoba lagi proses untuk buku saat ini…</string>
+        <string name="toast_no_book_to_retry">Tidak ada buku yang dipilih untuk dicoba lagi.</string>
+        <string name="toast_action_not_available_for_state">Aksi tidak tersedia untuk state saat ini: %s</string>
+        <!-- Anda mungkin ingin memisahkan pesan error spesifik jika sering digunakan -->
+        <!-- Contoh: <string name="toast_error_generic">Terjadi kesalahan.</string> -->
+
+        <!-- Dialog Konfirmasi Clear -->
+        <string name="dialog_title_confirm_clear">Konfirmasi Hapus</string>
+        <string name="dialog_message_confirm_clear">Anda yakin ingin menghapus data buku saat ini dan memulai dari awal?</string>
+        <string name="dialog_button_yes_clear">Ya, Hapus</string>
+        <!-- ... string Anda yang sudah ada ... -->
+        <string name="error_reader_disconnected">Koneksi reader UHF terputus.</string>
+        <string name="status_target_tag_found">Tag target ditemukan: %s</string>
+        <string name="status_target_tag_found_with_tid">Target: %1$s (TID: %2$s)</string>
+        <string name="error_failed_to_read_target_tag">Gagal membaca tag target: %s</string>
+        <string name="error_failed_to_read_single_tag">Gagal membaca tag tunggal: %s</string>
+        <string name="status_no_tags_found_after_scan">Tidak ada tag ditemukan.</string>
+        <!-- uhf_scan_stopped sudah ada -->
+        <string name="status_write_epc_success">Berhasil menulis EPC baru: %s</string>
+        <string name="error_write_epc_failed">Gagal menulis EPC: %s</string>
+        <string name="status_lock_tag_success">Berhasil mengunci memori tag.</string>
+        <string name="error_lock_tag_failed">Gagal mengunci memori tag: %s</string>
+        <string name="error_operation_in_progress">Operasi lain sedang berjalan. Harap tunggu.</string>
+        <!-- reader_not_ready sudah ada -->
+        <!-- status_membaca sudah ada -->
+        <!-- status_membaca_target sudah ada -->
+        <string name="error_no_target_epc_for_write">EPC target belum ditentukan untuk operasi tulis.</string>
+        <string name="error_invalid_epc_format_specific_length">Format EPC baru tidak valid (harus %d karakter hex).</string>
+        <string name="status_writing_epc">Menulis EPC: %s…</string>
+        <string name="error_no_target_epc_for_lock">EPC target belum ditentukan untuk operasi kunci.</string>
+    <string name="hint_select_q_value">Select Q Value</string>
+        <!-- ... string lain ... -->
+        <string name="title_filter_page">Filter Buku</string>
+        <string name="label_opname_status">Status Opname</string>
+        <string name="filter_status_all">Semua Status</string>
+        <string name="filter_status_found">Ditemukan</string>
+        <string name="filter_status_not_found_or_missing">Belum Ditemukan / Hilang</string>
+        <string name="filter_status_new_or_unexpected">Baru / Tak Terduga</string>
+
+        <string name="hint_filter_title">Filter berdasarkan Judul</string>
+        <string name="hint_filter_item_code">Filter berdasarkan Kode Item</string>
+        <string name="hint_filter_location">Filter berdasarkan Lokasi</string>
+        <string name="hint_filter_epc">Filter berdasarkan EPC</string>
+        <string name="filter_is_new_or_unexpected">Hanya tampilkan item baru/tak terduga</string>
+
+        <string name="button_reset_filter">Reset</string>
+        <string name="button_apply_filter">Terapkan</string>
+    <string name="button_filter_label">Filter Data Buku</string>
+    <string name="button_filter_label_active">Filter (Aktif)</string>
+    <string name="error_processing_data">Error: %s</string>
+    <string name="filter_all_active">Filter Semua</string>
+    <string name="error_adding_new_item_to_db">Error: %s</string>
+    <string name="prefix_item_code">Item Code: %s</string>
+    <string name="prefix_epc">EPC: %s</string>
+    <string name="prefix_status">Status: %s</string>
+    <string name="prefix_actual_location">Lokasi: %s</string>
+    <string name="message_no_items_in_report">Tidak ada item untuk ditampilkan dalam laporan.</string>
+    <string name="error_loading_report_items">Error loading report items: %s</string>
+        <!-- ... string lain ... -->
+        <string name="error_invalid_report_id">ID Report tidak valid.</string>
+        <string name="title_report_detail_loading">Memuat Detail Report...</string>
+        <string name="title_report_detail_prefix">Detail: %s</string> <!-- %s untuk nama report -->
+        <string name="report_session_name_prefix">Sesi: %s</string> <!-- %s untuk nama report -->
+        <string name="report_stats_format">Total: %1$d, Ditemukan: %2$d, Hilang: %3$d, Baru/Tak Terduga: %4$d</string>
+        <string name="title_report_not_found">Report Tidak Ditemukan</string>
+        <string name="error_report_not_found_detail">Detail untuk report ini tidak dapat ditemukan.</string>
+        <string name="error_loading_report_header">Gagal memuat informasi report.</string>
+        <string name="message_no_items_match_filter">Tidak ada item yang cocok dengan filter Anda.</string>
+        <string name="active_filter_prefix">Filter Aktif: %s</string>
+
+        <!-- Dari ReportItemAdapter (jika belum ada) -->
+        <string name="prefix_expected_location">Lokasi Seharusnya: %s</string>
+    <string name="title_report_error">Report Error</string>
+    <string name="title_activity_report_detail">Detail Report</string>
+    <string name="message_no_found_items_with_code_to_export">Tidak ada item yang ditemukan untuk diekspor (seharusnya sudah dicek).</string>
+    <string name="export_txt_success">Expor ke TXT berhasil: %s</string>
+    <string name="export_txt_failed">Expor ke TXT gagal: %s</string>
+    <string name="action_export_found_txt">Export TXT (Ditemukan)</string>
+    <string name="message_no_found_items_to_export">Tidak ada item yang ditemukan untuk diekspor (seharusnya sudah dicek).</string>
+    <string name="stop_barcode_scan_before_uhf">Stop scan</string>
+    <string name="stop_uhf_scan_before_barcode">Stop scan</string>
+    <string name="toast_operation_in_progress">Operasi sedang berlangsung, harap tunggu...</string>
+    <string name="toast_use_scan_barcode_button_or_physical_trigger">Gunakan tombol Pindai Barcode atau trigger fisik.</string>
+    <string name="confirm_write_tag_prefix_toast">KONFIRMASI PENULISAN TAG</string>
+    <string name="successfully_saved_indicator_toast">berhasil disimpan</string>
+    <string name="error_indicator_toast">Error:</string>
+    <string name="failed_indicator_toast">Gagal</string>
+    <string name="timeout_indicator_toast">Timeout</string>
+    <string name="not_found_indicator_toast">tidak ditemukan</string>
+    <string name="button_stop_read">Stop membaca</string>
+    <string name="status_radar_idle_no_target_set_but_specific_range">No Target</string>
+    <string name="status_radar_searching_epc">Searching: %s</string>
 </resources>

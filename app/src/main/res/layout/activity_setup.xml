@@ -5,11 +5,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".SetupActivity"> <!-- Sesuaikan dengan package Anda -->
+    tools:context=".SetupActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbarSetup"
@@ -36,11 +37,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
+                tools:visibility="visible"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginTop="8dp"
-                tools:visibility="visible"/>
+                android:layout_marginTop="8dp"/>
 
             <!-- 1. Output Power -->
             <TextView
@@ -62,7 +63,8 @@
                 android:hint="@string/hint_select_power"
                 app:layout_constraintTop_toBottomOf="@id/labelPower"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/buttonGetPower">
+                app:layout_constraintEnd_toStartOf="@+id/buttonGetPower"
+                app:layout_constraintHorizontal_weight="2">
 
                 <AutoCompleteTextView
                     android:id="@+id/spinnerPower"
@@ -121,99 +123,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="@string/label_frequency_region"
+                android:hint="@string/hint_select_region"
                 app:layout_constraintTop_toBottomOf="@id/labelFrequencyRegion"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/buttonGetFrequencyRegion">
+                app:layout_constraintEnd_toStartOf="@+id/buttonGetFrequencyRegion"
+                app:layout_constraintHorizontal_weight="2">
 
-            <AutoCompleteTextView
-                android:id="@+id/spinnerFrequencyRegion"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                tools:ignore="SpeakableTextPresentCheck" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonGetFrequencyRegion"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_get"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/layoutFrequencyRegionSpinner"
-            app:layout_constraintBottom_toBottomOf="@id/layoutFrequencyRegionSpinner"
-            app:layout_constraintStart_toEndOf="@id/layoutFrequencyRegionSpinner"
-            app:layout_constraintEnd_toStartOf="@+id/buttonSetFrequencyRegion"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonSetFrequencyRegion"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_set"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/layoutFrequencyRegionSpinner"
-            app:layout_constraintBottom_toBottomOf="@id/layoutFrequencyRegionSpinner"
-            app:layout_constraintStart_toEndOf="@+id/buttonGetFrequencyRegion"
-            app:layout_constraintEnd_toEndOf="parent"/>
-
-        <View
-            android:id="@+id/divider2"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/layoutFrequencyRegionSpinner" />
-
-        <!-- 3. Frequency Hopping -->
-        <TextView
-            android:id="@+id/labelFreqHopping"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/label_freq_hopping"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider2"
-            app:layout_constraintStart_toStartOf="parent"/>
-
-        <LinearLayout
-            android:id="@+id/containerFreqHopping"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/labelFreqHopping"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:visibility="visible">
-
-            <RadioGroup
-                android:id="@+id/radioGroupFreqHoppingType"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <RadioButton
-                    android:id="@+id/radioFreqHoppingUS"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/radio_button_freq_hopping_us"/>
-                <RadioButton
-                    android:id="@+id/radioFreqHoppingOthers"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="@string/radio_button_freq_hopping_others"/>
-            </RadioGroup>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutFreqHoppingSpinner"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="@string/hint_select_freq_hopping_table">
                 <AutoCompleteTextView
-                    android:id="@+id/spinnerFreqHopping"
+                    android:id="@+id/spinnerFrequencyRegion"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="none"
@@ -221,458 +138,638 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonSetFreqHopping"
+                android:id="@+id/buttonGetFrequencyRegion"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:text="@string/button_get"
+                android:layout_marginStart="8dp"
+                app:layout_constraintTop_toTopOf="@id/layoutFrequencyRegionSpinner"
+                app:layout_constraintBottom_toBottomOf="@id/layoutFrequencyRegionSpinner"
+                app:layout_constraintStart_toEndOf="@id/layoutFrequencyRegionSpinner"
+                app:layout_constraintEnd_toStartOf="@+id/buttonSetFrequencyRegion"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonSetFrequencyRegion"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:text="@string/button_set"
+                android:layout_marginStart="8dp"
+                app:layout_constraintTop_toTopOf="@id/layoutFrequencyRegionSpinner"
+                app:layout_constraintBottom_toBottomOf="@id/layoutFrequencyRegionSpinner"
+                app:layout_constraintStart_toEndOf="@+id/buttonGetFrequencyRegion"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+            <View
+                android:id="@+id/divider2"
                 android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/layoutFrequencyRegionSpinner" />
+
+            <!-- 3. Frequency Hopping -->
+            <TextView
+                android:id="@+id/labelFreqHopping"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_freq_hopping"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider2"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <LinearLayout
+                android:id="@+id/containerFreqHopping"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/labelFreqHopping"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:visibility="gone"
+                tools:visibility="visible"> <!-- Default gone, ViewModel akan mengontrol -->
+
+                <!-- RadioGroup untuk type mungkin tidak lagi fungsional penuh -->
+                <!-- jika ViewModel hanya menangani Custom Float Value -->
+                <RadioGroup
+                    android:id="@+id/radioGroupFreqHoppingType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:visibility="gone"> <!-- Sembunyikan jika tidak digunakan -->
+                    <RadioButton
+                        android:id="@+id/radioFreqHoppingUS"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/radio_button_freq_hopping_us"/>
+                    <RadioButton
+                        android:id="@+id/radioFreqHoppingOthers"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:text="@string/radio_button_freq_hopping_others"/>
+                </RadioGroup>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutFreqHoppingSpinner"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/hint_enter_freq_hopping_value"> <!-- Hint diubah -->
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editTextFreqHoppingValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonGetFreqHopping"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="@string/button_get"
+                        android:layout_marginEnd="4dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonSetFreqHopping"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="@string/button_set_freq_hopping"
+                        android:layout_marginStart="4dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:id="@+id/divider3"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/containerFreqHopping" />
+
+            <!-- 4. Protocol -->
+            <TextView
+                android:id="@+id/labelProtocol"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_protocol"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider3"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutProtocolSpinner"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/button_set_freq_hopping"/>
-            <!-- Tombol Get untuk Freq Hopping bisa ditambahkan di sini jika perlu -->
-        </LinearLayout>
+                android:hint="@string/hint_select_protocol"
+                app:layout_constraintTop_toBottomOf="@id/labelProtocol"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/buttonGetProtocol"
+                app:layout_constraintHorizontal_weight="2">
 
-        <View
-            android:id="@+id/divider3"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/containerFreqHopping" />
-
-        <!-- 4. Protocol -->
-        <TextView
-            android:id="@+id/labelProtocol"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/label_protocol"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider3"
-            app:layout_constraintStart_toStartOf="parent"/>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutProtocolSpinner"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="@string/hint_select_protocol"
-            app:layout_constraintTop_toBottomOf="@id/labelProtocol"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/buttonGetProtocol">
-
-            <AutoCompleteTextView
-                android:id="@+id/spinnerProtocol"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                tools:ignore="SpeakableTextPresentCheck" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonGetProtocol"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_get"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/layoutProtocolSpinner"
-            app:layout_constraintBottom_toBottomOf="@id/layoutProtocolSpinner"
-            app:layout_constraintStart_toEndOf="@id/layoutProtocolSpinner"
-            app:layout_constraintEnd_toStartOf="@+id/buttonSetProtocol"/>
-
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonSetProtocol"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_set"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/layoutProtocolSpinner"
-            app:layout_constraintBottom_toBottomOf="@id/layoutProtocolSpinner"
-            app:layout_constraintStart_toEndOf="@+id/buttonGetProtocol"
-            app:layout_constraintEnd_toEndOf="parent"/>
-
-        <View
-            android:id="@+id/divider4"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/layoutProtocolSpinner" />
-
-        <!-- 5. RFLink Profile -->
-        <TextView
-            android:id="@+id/labelRFLink"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/label_rflink_profile"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider4"
-            app:layout_constraintStart_toStartOf="parent"/>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutRFLinkSpinner"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="@string/hint_select_rflink_profile"
-            app:layout_constraintTop_toBottomOf="@id/labelRFLink"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/buttonGetRFLink">
-
-            <AutoCompleteTextView
-                android:id="@+id/spinnerRFLink"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                tools:ignore="SpeakableTextPresentCheck" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonGetRFLink"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_get"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/layoutRFLinkSpinner"
-            app:layout_constraintBottom_toBottomOf="@id/layoutRFLinkSpinner"
-            app:layout_constraintStart_toEndOf="@id/layoutRFLinkSpinner"
-            app:layout_constraintEnd_toStartOf="@+id/buttonSetRFLink"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonSetRFLink"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_set"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/layoutRFLinkSpinner"
-            app:layout_constraintBottom_toBottomOf="@id/layoutRFLinkSpinner"
-            app:layout_constraintStart_toEndOf="@+id/buttonGetRFLink"
-            app:layout_constraintEnd_toEndOf="parent"/>
-
-        <View
-            android:id="@+id/divider5"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/layoutRFLinkSpinner" />
-
-        <!-- 6. Memory Bank (Inventory) -->
-        <TextView
-            android:id="@+id/labelMemoryBank"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/label_memory_bank"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider5"
-            app:layout_constraintStart_toStartOf="parent"/>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutMemoryBankSpinner"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="@string/hint_select_memory_bank"
-            app:layout_constraintTop_toBottomOf="@id/labelMemoryBank"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-            <AutoCompleteTextView
-                android:id="@+id/spinnerMemoryBank"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                tools:ignore="SpeakableTextPresentCheck" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <LinearLayout
-            android:id="@+id/containerMemoryBankDetails"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/layoutMemoryBankSpinner"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutMemoryBankOffset"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="@string/hint_memory_bank_offset"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editTextMemoryBankOffset"
+                <AutoCompleteTextView
+                    android:id="@+id/spinnerProtocol"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number"/>
+                    android:inputType="none"
+                    tools:ignore="SpeakableTextPresentCheck" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonGetProtocol"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:text="@string/button_get"
+                android:layout_marginStart="8dp"
+                app:layout_constraintTop_toTopOf="@id/layoutProtocolSpinner"
+                app:layout_constraintBottom_toBottomOf="@id/layoutProtocolSpinner"
+                app:layout_constraintStart_toEndOf="@id/layoutProtocolSpinner"
+                app:layout_constraintEnd_toStartOf="@+id/buttonSetProtocol"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonSetProtocol"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:text="@string/button_set"
+                android:layout_marginStart="8dp"
+                app:layout_constraintTop_toTopOf="@id/layoutProtocolSpinner"
+                app:layout_constraintBottom_toBottomOf="@id/layoutProtocolSpinner"
+                app:layout_constraintStart_toEndOf="@+id/buttonGetProtocol"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+            <View
+                android:id="@+id/divider4"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/layoutProtocolSpinner" />
+
+            <!-- 5. RFLink Profile -->
+            <TextView
+                android:id="@+id/labelRFLink"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_rflink_profile"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider4"
+                app:layout_constraintStart_toStartOf="parent"/>
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/layoutMemoryBankLength"
+                android:id="@+id/layoutRFLinkSpinner"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:hint="@string/hint_memory_bank_length"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editTextMemoryBankLength"
+                android:layout_marginTop="8dp"
+                android:hint="@string/hint_select_rflink_profile"
+                app:layout_constraintTop_toBottomOf="@id/labelRFLink"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/buttonGetRFLink"
+                app:layout_constraintHorizontal_weight="2">
+
+                <AutoCompleteTextView
+                    android:id="@+id/spinnerRFLink"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number"/>
+                    android:inputType="none"
+                    tools:ignore="SpeakableTextPresentCheck" />
             </com.google.android.material.textfield.TextInputLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/containerMemoryBankButtons"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/containerMemoryBankDetails"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonGetMemoryBank"
+                android:id="@+id/buttonGetRFLink"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="@string/button_get"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonSetMemoryBank"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:text="@string/button_get"
                 android:layout_marginStart="8dp"
-                android:text="@string/button_set"/>
-        </LinearLayout>
-
-        <View
-            android:id="@+id/divider6"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/containerMemoryBankButtons" />
-
-        <!-- 7. Session Gen2 -->
-        <TextView
-            android:id="@+id/labelSessionGen2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/label_session_gen2"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider6"
-            app:layout_constraintStart_toStartOf="parent"/>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutSessionIdSpinner"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="@string/hint_select_session_id"
-            app:layout_constraintTop_toBottomOf="@id/labelSessionGen2"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/layoutInventoriedFlagSpinner"
-            app:layout_constraintHorizontal_chainStyle="packed"
-            app:layout_constraintHorizontal_weight="1">
-            <AutoCompleteTextView
-                android:id="@+id/spinnerSessionId"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                tools:ignore="SpeakableTextPresentCheck" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutInventoriedFlagSpinner"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:hint="@string/hint_select_inventoried_flag"
-            app:layout_constraintTop_toTopOf="@id/layoutSessionIdSpinner"
-            app:layout_constraintBottom_toBottomOf="@id/layoutSessionIdSpinner"
-            app:layout_constraintStart_toEndOf="@id/layoutSessionIdSpinner"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_weight="1">
-            <AutoCompleteTextView
-                android:id="@+id/spinnerInventoriedFlag"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                tools:ignore="SpeakableTextPresentCheck" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <LinearLayout
-            android:id="@+id/containerSessionGen2Buttons"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/layoutSessionIdSpinner"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+                app:layout_constraintTop_toTopOf="@id/layoutRFLinkSpinner"
+                app:layout_constraintBottom_toBottomOf="@id/layoutRFLinkSpinner"
+                app:layout_constraintStart_toEndOf="@id/layoutRFLinkSpinner"
+                app:layout_constraintEnd_toStartOf="@+id/buttonSetRFLink"/>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonGetSessionGen2"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="@string/button_get"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonSetSessionGen2"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
+                android:id="@+id/buttonSetRFLink"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:text="@string/button_set"
                 android:layout_marginStart="8dp"
-                android:text="@string/button_set"/>
-        </LinearLayout>
+                app:layout_constraintTop_toTopOf="@id/layoutRFLinkSpinner"
+                app:layout_constraintBottom_toBottomOf="@id/layoutRFLinkSpinner"
+                app:layout_constraintStart_toEndOf="@+id/buttonGetRFLink"
+                app:layout_constraintEnd_toEndOf="parent"/>
 
-        <View
-            android:id="@+id/divider7"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/containerSessionGen2Buttons" />
+            <View
+                android:id="@+id/divider5"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/layoutRFLinkSpinner" />
 
-        <!-- 8. Fast Inventory -->
-        <TextView
-            android:id="@+id/labelFastInventory"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/label_fast_inventory"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider7"
-            app:layout_constraintStart_toStartOf="parent"/>
-
-        <RadioGroup
-            android:id="@+id/radioGroupFastInventory"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/labelFastInventory"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/buttonSetFastInventory">
-            <RadioButton
-                android:id="@+id/radioFastInventoryOpen"
+            <!-- 6. Memory Bank (Inventory) -->
+            <TextView
+                android:id="@+id/labelMemoryBank"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/radio_button_fast_inventory_open"/>
-            <RadioButton
-                android:id="@+id/radioFastInventoryClose"
+                android:text="@string/label_memory_bank"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider5"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutMemoryBankSpinner"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/hint_select_memory_bank"
+                app:layout_constraintTop_toBottomOf="@id/labelMemoryBank"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+                <AutoCompleteTextView
+                    android:id="@+id/spinnerMemoryBank"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    tools:ignore="SpeakableTextPresentCheck" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <LinearLayout
+                android:id="@+id/containerMemoryBankDetails"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/layoutMemoryBankSpinner"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutMemoryBankOffset"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/hint_memory_bank_offset"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_marginEnd="4dp">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editTextMemoryBankOffset"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutMemoryBankLength"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:hint="@string/hint_memory_bank_length"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editTextMemoryBankLength"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/containerMemoryBankButtons"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/containerMemoryBankDetails"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonGetMemoryBank"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="@string/button_get"
+                    android:layout_marginEnd="4dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonSetMemoryBank"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/button_set"/>
+            </LinearLayout>
+
+            <View
+                android:id="@+id/divider6"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/containerMemoryBankButtons" />
+
+            <!-- 7. Session Gen2 -->
+            <TextView
+                android:id="@+id/labelSessionGen2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:text="@string/radio_button_fast_inventory_close"/>
-        </RadioGroup>
+                android:text="@string/label_session_gen2"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider6"
+                app:layout_constraintStart_toStartOf="parent"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonGetFastInventory"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_get"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/radioGroupFastInventory"
-            app:layout_constraintBottom_toBottomOf="@id/radioGroupFastInventory"
-            app:layout_constraintStart_toEndOf="@id/radioGroupFastInventory"
-            app:layout_constraintEnd_toStartOf="@+id/buttonSetFastInventory"/>
+            <LinearLayout
+                android:id="@+id/containerSessionGen2Spinners"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/labelSessionGen2"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonSetFastInventory"
-            android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:text="@string/button_set"
-            android:layout_marginStart="8dp"
-            app:layout_constraintTop_toTopOf="@id/radioGroupFastInventory"
-            app:layout_constraintBottom_toBottomOf="@id/radioGroupFastInventory"
-            app:layout_constraintStart_toEndOf="@+id/buttonGetFastInventory"
-            app:layout_constraintEnd_toEndOf="parent"/>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutSessionIdSpinner"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/hint_select_session_id"
+                    android:layout_marginEnd="4dp">
+                    <AutoCompleteTextView
+                        android:id="@+id/spinnerSessionId"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        tools:ignore="SpeakableTextPresentCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
 
-        <View
-            android:id="@+id/divider8"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/radioGroupFastInventory" />
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutInventoriedFlagSpinner"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:hint="@string/hint_select_inventoried_flag">
+                    <AutoCompleteTextView
+                        android:id="@+id/spinnerInventoriedFlag"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        tools:ignore="SpeakableTextPresentCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- 9. Additional Settings (Switches) -->
-        <TextView
-            android:id="@+id/labelAdditionalSettings"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/label_additional_settings"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider8"
-            app:layout_constraintStart_toStartOf="parent"/>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutQValueSpinner"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:hint="@string/hint_select_q_value">
+                    <AutoCompleteTextView
+                        android:id="@+id/spinnerQValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        tools:ignore="SpeakableTextPresentCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/switchTagFocus"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/switch_tag_focus"
-            android:textSize="16sp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/labelAdditionalSettings"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            </LinearLayout>
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/switchFastID"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/switch_fast_id"
-            android:textSize="16sp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/switchTagFocus"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
-        <!-- Anda bisa menambahkan tombol Get untuk switch jika diperlukan -->
+            <LinearLayout
+                android:id="@+id/containerSessionGen2Buttons"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/containerSessionGen2Spinners"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
 
-        <View
-            android:id="@+id/divider9"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@id/switchFastID" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonGetSessionGen2"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="@string/button_get"
+                    android:layout_marginEnd="4dp"/>
 
-        <!-- 10. Factory Reset -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonFactoryReset"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/button_factory_reset"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="16dp"
-            app:layout_constraintTop_toBottomOf="@id/divider9"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            style="@style/Widget.MaterialComponents.Button.TextButton.Dialog"
-            android:textColor="?attr/colorError" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonSetSessionGen2"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/button_set"/>
+            </LinearLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</androidx.core.widget.NestedScrollView>
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+            <View
+                android:id="@+id/divider7"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/containerSessionGen2Buttons" />
+
+            <!-- 8. Fast Inventory -->
+            <TextView
+                android:id="@+id/labelFastInventory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_fast_inventory"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider7"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <LinearLayout
+                android:id="@+id/containerFastInventoryControls"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/labelFastInventory"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <RadioGroup
+                    android:id="@+id/radioGroupFastInventory"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"
+                    android:orientation="horizontal">
+                    <RadioButton
+                        android:id="@+id/radioFastInventoryOpen"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/radio_button_fast_inventory_open"/>
+                    <RadioButton
+                        android:id="@+id/radioFastInventoryClose"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:text="@string/radio_button_fast_inventory_close"/>
+                </RadioGroup>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonGetFastInventory"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/button_get"
+                    android:layout_marginStart="8dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonSetFastInventory"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/button_set"
+                    android:layout_marginStart="8dp"/>
+            </LinearLayout>
+
+
+            <View
+                android:id="@+id/divider8"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/containerFastInventoryControls" />
+
+            <!-- 9. Additional Settings (Switches) -->
+            <TextView
+                android:id="@+id/labelAdditionalSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_additional_settings"
+                android:textSize="16sp"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider8"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <LinearLayout
+                android:id="@+id/containerTagFocus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/labelAdditionalSettings"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchTagFocus"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="@string/switch_tag_focus"
+                    android:textSize="16sp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonGetTagFocus"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/button_get"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone"/> <!-- SDK tidak mendukung get -->
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:id="@+id/containerFastID"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/containerTagFocus"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchFastID"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="@string/switch_fast_id"
+                    android:textSize="16sp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonGetFastID"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="@string/button_get"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone"/> <!-- SDK tidak mendukung get -->
+            </LinearLayout>
+
+            <View
+                android:id="@+id/divider9"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/containerFastID" />
+
+            <!-- 10. Factory Reset -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonFactoryReset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/button_factory_reset"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="16dp"
+                app:layout_constraintTop_toBottomOf="@id/divider9"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                style="@style/Widget.MaterialComponents.Button.TextButton.Dialog"
+                android:textColor="?attr/colorError" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

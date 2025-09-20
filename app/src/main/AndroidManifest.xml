@@ -10,9 +10,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_your_logo"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/ic_your_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.AplikasiStockOpnamePerpus"
         tools:targetApi="34">
@@ -95,6 +95,22 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".UhfInitActivity" />
+        </activity>
+
+        <activity
+            android:name=".ReportDetailActivity"
+            android:exported="false"
+            android:label="@string/title_activity_report_detail"
+            android:parentActivityName=".ReportActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ReportActivity" />
+        </activity>
+
+        <activity
+            android:name=".FilterActivity"
+            android:label="@string/title_filter_page"
+            android:exported="false">
         </activity>
 
         <service

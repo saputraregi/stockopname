@@ -33,6 +33,42 @@ class TxtFileExporter(private val delimiter: String = ",") : FileExporter {
         }
     }
 
+    /**
+     * Exports a list of item codes (typically itemCodeMaster from StockOpnameItem) to a TXT file,
+     * with each item code on a new line. No headers are written.
+     *
+     * @param itemCodes The list of item code strings to export.
+     * @param outputStream The stream to write the TXT data to.
+     * @return ExportResult indicating success or failure.
+     */
+    suspend fun exportItemCodeList(
+        itemCodes: List<String>,
+        outputStream: OutputStream
+    ): ExportResult {
+        return withContext(Dispatchers.IO) {
+            if (itemCodes.isEmpty()) {
+                Log.i(TAG, "No item codes to export to TXT.")
+                return@withContext ExportResult.NoDataToExport
+            }
+            try {
+                BufferedWriter(OutputStreamWriter(outputStream, "UTF-8")).use { writer ->
+                    itemCodes.forEach { itemCode ->
+                        writer.append(itemCode) // Tulis item code
+                        writer.newLine()        // Pindah ke baris baru
+                    }
+                    writer.flush()
+                }
+                ExportResult.Success("Item codes exported to TXT stream", itemCodes.size)
+            } catch (e: IOException) {
+                Log.e(TAG, "Error exporting item codes to TXT: ${e.message}", e)
+                ExportResult.Error("Gagal mengekspor daftar kode item ke TXT: ${e.message}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error exporting item codes to TXT: ${e.message}", e)
+                ExportResult.Error("Terjadi kesalahan tak terduga saat mengekspor daftar kode item (TXT): ${e.message}")
+            }
+        }
+    }
+
     override suspend fun exportBooks(
         books: List<BookMaster>,
         outputStream: OutputStream,

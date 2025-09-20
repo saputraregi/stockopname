@@ -59,7 +59,8 @@ class RadarView @JvmOverloads constructor(
      * Mengikat data tag yang terdeteksi ke RadarPanelView.
      * PASTIKAN TIPE PARAMETER tags BENAR DI SINI.
      */
-    fun bindingData(tags: List<MyRadarLocationEntity>, targetEpc: String?) {
+    fun bindingData(tags: List<com.rscja.deviceapi.entity.RadarLocationEntity>, targetEpc: String?) {
+        // radarPanelView juga perlu diubah untuk menerima tipe SDK
         radarPanelView.setTags(tags, targetEpc)
     }
 

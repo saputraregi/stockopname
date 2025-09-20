@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="?attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/textView_book_title_selectable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceListItem"
+        tools:text="Judul Buku yang Sangat Panjang Sekali" />
+
+    <TextView
+        android:id="@+id/textView_item_code_selectable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceListItemSecondary"
+        tools:text="Kode: B00001XYZ" />
+
+    <TextView
+        android:id="@+id/textView_rfid_tag_selectable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceCaption"
+        tools:text="EPC: E2001234567890ABCDEF1234"
+        android:textColor="?attr/colorPrimary"
+        android:textStyle="italic"/>
+</LinearLayout>

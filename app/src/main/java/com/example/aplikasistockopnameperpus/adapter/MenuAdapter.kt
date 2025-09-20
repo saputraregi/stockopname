@@ -20,10 +20,10 @@ class MenuAdapter(
     // Daftar MenuAction yang memerlukan reader untuk aktif
     // Sesuaikan daftar ini dengan kebutuhan aplikasi Anda
     private val readerRequiredActions = setOf(
-        MenuAction.STOCK_OPNAME,
+        //MenuAction.STOCK_OPNAME,
         MenuAction.READ_WRITE_TAG, // Jika Anda punya menu ini
-        MenuAction.RADAR,         // Jika Anda punya menu ini
-        MenuAction.PAIRING_WRITE  // Tambahkan jika menu "Pair & Write Tag" memerlukan reader
+        //MenuAction.RADAR,         // Jika Anda punya menu ini
+        //MenuAction.PAIRING_WRITE  // Tambahkan jika menu "Pair & Write Tag" memerlukan reader
         // Tambahkan MenuAction lain yang memerlukan reader
     )
 

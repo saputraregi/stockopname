@@ -1,26 +1,26 @@
-package com.example.aplikasistockopnameperpus // Ganti dengan package Anda
+package com.example.aplikasistockopnameperpus
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.glance.visibility
-import com.example.aplikasistockopnameperpus.R // Pastikan R diimport dengan benar
-import com.example.aplikasistockopnameperpus.databinding.ActivitySetupBinding // Ganti dengan nama binding Anda
+// import androidx.lifecycle.map // Tidak digunakan
+// import androidx.lifecycle.observe // Tidak digunakan
+import com.example.aplikasistockopnameperpus.databinding.ActivitySetupBinding
 import com.example.aplikasistockopnameperpus.viewmodel.SetupViewModel
-import com.example.aplikasistockopnameperpus.viewmodel.SetupViewModelFactory
 
 class SetupActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySetupBinding
-    private val viewModel: SetupViewModel by viewModels {
-        // Ganti null dengan instance reader Anda jika sudah ada, atau mekanisme dependency injection lain
-        SetupViewModelFactory(null /* readerInstance */)
-    }
+    private val viewModel: SetupViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,10 +29,15 @@ class SetupActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbarSetup)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Reader Setup" // Atau dari string resource
+        supportActionBar?.title = getString(R.string.title_activity_setup)
 
         setupUIListeners()
         observeViewModel()
+
+        // Panggil setelah UI siap dan observer terpasang
+        // Pastikan reader sudah terhubung sebelum memanggil ini,
+        // ViewModel akan menangani pengecekan isDeviceReady.
+        viewModel.loadAllInitialSettings()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -47,8 +52,21 @@ class SetupActivity : AppCompatActivity() {
             val powerStr = (binding.layoutPowerSpinner.editText as? AutoCompleteTextView)?.text.toString()
             powerStr.toIntOrNull()?.let {
                 viewModel.setPower(it)
-            } ?: showToast("Pilih daya yang valid.")
+            } ?: showToast(getString(R.string.toast_select_valid_power))
         }
+        // Listener untuk AutoCompleteTextView Power (opsional, jika ingin update langsung saat dipilih)
+        (binding.layoutPowerSpinner.editText as? AutoCompleteTextView)?.onItemClickListener =
+            AdapterView.OnItemClickListener { _, _, position, _ ->
+                val adapter = (binding.layoutPowerSpinner.editText as? AutoCompleteTextView)?.adapter
+                val selectedPowerStr = adapter?.getItem(position) as? String
+                selectedPowerStr?.toIntOrNull()?.let {
+                    // Anda bisa memilih untuk langsung set, atau hanya update LiveData di ViewModel,
+                    // dan biarkan tombol "Set" yang melakukan aksi set ke reader.
+                    // Untuk konsistensi dengan tombol Set, mungkin lebih baik tidak set di sini.
+                    // viewModel.setPower(it)
+                }
+            }
+
 
         // --- 2. Frequency/Region ---
         binding.buttonGetFrequencyRegion.setOnClickListener { viewModel.getFrequencyRegion() }
@@ -57,41 +75,42 @@ class SetupActivity : AppCompatActivity() {
             if (region.isNotBlank()) {
                 viewModel.setFrequencyRegion(region)
             } else {
-                showToast("Pilih region.")
+                showToast(getString(R.string.toast_select_region))
             }
         }
 
         // --- 3. Frequency Hopping ---
+        // Karena ViewModel menyederhanakan FreHop hanya menjadi nilai float,
+        // RadioGroup type mungkin tidak lagi relevan.
         binding.buttonSetFreqHopping.setOnClickListener {
-            val type = when (binding.radioGroupFreqHoppingType.checkedRadioButtonId) {
-                R.id.radioFreqHoppingUS -> "US"
-                R.id.radioFreqHoppingOthers -> "Others"
-                else -> ""
-            }
-            val table = (binding.layoutFreqHoppingSpinner.editText as? AutoCompleteTextView)?.text.toString()
-            if (type.isNotBlank() && table.isNotBlank()) {
-                viewModel.setFreqHopping(type, table)
+            val tableOrValue = (binding.layoutFreqHoppingSpinner.editText as? AutoCompleteTextView)?.text.toString()
+            if (tableOrValue.isNotBlank()) {
+                viewModel.setFreqHopping(tableOrValue) // Hanya mengirim nilai
             } else {
-                showToast("Pilih tipe dan tabel Frequency Hopping.")
+                showToast(getString(R.string.toast_select_hopping_type_table)) // Pesan disesuaikan
             }
         }
-        // Listener untuk get Freq Hopping (jika ada tombol Get terpisah untuk ini)
-        // binding.buttonGetFreqHopping.setOnClickListener { viewModel.getFreqHoppingSettings() }
+        binding.buttonGetFreqHopping?.setOnClickListener {
+            viewModel.getFreqHoppingSettings()
+        }
+        // Listener untuk radio group FreHop type mungkin tidak lagi diperlukan
+        // jika ViewModel tidak lagi menggunakan 'type'.
+        // binding.radioGroupFreqHoppingType.setOnCheckedChangeListener { group, checkedId ->
+        //    val type = when (checkedId) { ... }
+        //    viewModel.onFreqHoppingTypeChanged(type) // Contoh jika ViewModel perlu tahu
+        // }
 
 
         // --- 4. Protocol ---
+        binding.buttonGetProtocol.setOnClickListener { viewModel.getProtocol() }
         binding.buttonSetProtocol.setOnClickListener {
             val protocol = (binding.layoutProtocolSpinner.editText as? AutoCompleteTextView)?.text.toString()
             if (protocol.isNotBlank()) {
                 viewModel.setProtocol(protocol)
             } else {
-                showToast("Pilih protokol.")
+                showToast(getString(R.string.toast_select_protocol))
             }
         }
-        binding.buttonGetProtocol.setOnClickListener { // Asumsi ada tombol Get untuk Protocol
-            viewModel.getProtocol()
-        }
-
 
         // --- 5. RFLink Profile ---
         binding.buttonGetRFLink.setOnClickListener { viewModel.getRFLinkProfile() }
@@ -100,36 +119,29 @@ class SetupActivity : AppCompatActivity() {
             if (profile.isNotBlank()) {
                 viewModel.setRFLinkProfile(profile)
             } else {
-                showToast("Pilih profil RFLink.")
+                showToast(getString(R.string.toast_select_rflink_profile))
             }
         }
 
-        // --- 6. Memory Bank (Inventory) ---
-        (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.setOnItemClickListener { _, _, position, _ ->
-            val selectedBank = viewModel.memoryBankOptions.value?.get(position)
-            viewModel.onMemoryBankSelected(selectedBank)
-        }
-        binding.buttonGetMemoryBank.setOnClickListener {
-            val bank = (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.text.toString()
-            val offset = binding.editTextMemoryBankOffset.text.toString().toIntOrNull()
-            val length = binding.editTextMemoryBankLength.text.toString().toIntOrNull()
-            if (bank.isNotBlank()) {
-                viewModel.getMemoryBankData(bank, offset, length)
-            } else {
-                showToast("Pilih Memory Bank.")
+        // --- 6. Memory Bank (Inventory Mode) ---
+        (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.onItemClickListener =
+            AdapterView.OnItemClickListener { _, _, position, _ ->
+                val adapter = (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.adapter
+                val selectedBank = adapter?.getItem(position) as? String
+                selectedBank?.let {
+                    viewModel.onMemoryBankSelected(it)
+                }
             }
-        }
+        binding.buttonGetMemoryBank.setOnClickListener { viewModel.getMemoryBankData() }
         binding.buttonSetMemoryBank.setOnClickListener {
             val bank = (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.text.toString()
             val offsetStr = binding.editTextMemoryBankOffset.text.toString()
             val lengthStr = binding.editTextMemoryBankLength.text.toString()
-            // Untuk set, Anda mungkin memerlukan input data. Untuk sekarang, kita skip data input.
+
             if (bank.isNotBlank()) {
-                // Anda perlu UI untuk memasukkan data yang akan ditulis jika operasi set memerlukan data
-                val dataToWrite = "SIMULATED_DATA" // Contoh, harusnya dari input user
-                viewModel.setMemoryBankData(bank, offsetStr.toIntOrNull(), lengthStr.toIntOrNull(), dataToWrite)
+                viewModel.setMemoryBankInventoryMode(bank, offsetStr, lengthStr) // Kirim sebagai String
             } else {
-                showToast("Pilih Memory Bank.")
+                showToast(getString(R.string.toast_select_memory_bank))
             }
         }
 
@@ -138,122 +150,227 @@ class SetupActivity : AppCompatActivity() {
         binding.buttonSetSessionGen2.setOnClickListener {
             val sessionId = (binding.layoutSessionIdSpinner.editText as? AutoCompleteTextView)?.text.toString()
             val target = (binding.layoutInventoriedFlagSpinner.editText as? AutoCompleteTextView)?.text.toString()
+            // Ambil Q value dari UI. Asumsi ada AutoCompleteTextView atau EditText untuk Q.
+            // Jika menggunakan SeekBar, ambil dari progress.
+            val qValueStr = (binding.layoutQValueSpinner.editText as? AutoCompleteTextView)?.text.toString()
+            val qValue = qValueStr.toIntOrNull() ?: viewModel.currentQValue.value ?: 4 // Default jika tidak valid atau tidak ada
+
             if (sessionId.isNotBlank() && target.isNotBlank()) {
-                viewModel.setSessionGen2(sessionId, target)
+                viewModel.setSessionGen2(sessionId, target, qValue)
             } else {
-                showToast("Pilih Session ID dan Target.")
+                showToast(getString(R.string.toast_select_session_target))
             }
         }
+        // Listener untuk Q Value Spinner/EditText (jika ingin update LiveData saat berubah)
+        (binding.layoutQValueSpinner.editText as? AutoCompleteTextView)?.onItemClickListener =
+            AdapterView.OnItemClickListener { _, _, position, _ ->
+                val adapter = (binding.layoutQValueSpinner.editText as? AutoCompleteTextView)?.adapter
+                val selectedQStr = adapter?.getItem(position) as? String
+                selectedQStr?.toIntOrNull()?.let {
+                    viewModel.onQValueChanged(it)
+                }
+            }
+        // Atau jika EditText biasa untuk Q Value:
+        // binding.editTextQValue.addTextChangedListener(object : TextWatcher { ... })
+
 
         // --- 8. Fast Inventory ---
         binding.buttonGetFastInventory.setOnClickListener { viewModel.getFastInventoryStatus() }
-        binding.radioGroupFastInventory.setOnCheckedChangeListener { _, checkedId ->
-            checkedId == R.id.radioFastInventoryOpen
-            // Jika Anda ingin set langsung saat radio berubah:
-            // viewModel.setFastInventoryStatus(isOpen)
-        }
         binding.buttonSetFastInventory.setOnClickListener {
             val isOpen = binding.radioGroupFastInventory.checkedRadioButtonId == R.id.radioFastInventoryOpen
             viewModel.setFastInventoryStatus(isOpen)
         }
-        // Untuk SwitchMaterial:
-        // binding.switchFastInventory.setOnCheckedChangeListener { _, isChecked ->
-        //     viewModel.setFastInventoryStatus(isChecked)
-        // }
-
 
         // --- 9. TagFocus & FastID Switches ---
         binding.switchTagFocus.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setTagFocusEnabled(isChecked)
-            // Tambahkan tombol Get jika SDK mendukung pembacaan status
         }
+        binding.buttonGetTagFocus?.setOnClickListener { viewModel.getTagFocusStatus() }
+
         binding.switchFastID.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setFastIDEnabled(isChecked)
-            // Tambahkan tombol Get jika SDK mendukung pembacaan status
         }
+        binding.buttonGetFastID?.setOnClickListener { viewModel.getFastIDStatus() }
 
         // --- 10. Factory Reset ---
         binding.buttonFactoryReset.setOnClickListener {
             AlertDialog.Builder(this)
-                .setTitle("Factory Reset")
-                .setMessage("Apakah Anda yakin ingin melakukan factory reset? Semua pengaturan akan kembali ke default pabrik.")
-                .setPositiveButton("Reset") { _, _ ->
+                .setTitle(getString(R.string.dialog_title_factory_reset))
+                .setMessage(getString(R.string.dialog_message_factory_reset))
+                .setPositiveButton(getString(R.string.dialog_button_reset)) { _, _ ->
                     viewModel.performFactoryReset()
                 }
-                .setNegativeButton("Batal", null)
+                .setNegativeButton(getString(R.string.dialog_button_cancel), null)
                 .show()
         }
     }
 
     private fun observeViewModel() {
         viewModel.isLoading.observe(this) { isLoading ->
-            binding.progressBarSetup?.visibility = if (isLoading) View.VISIBLE else View.GONE // Tambahkan ProgressBar ke XML jika perlu
-            // Disable UI elements when loading if needed
+            binding.progressBarSetup?.visibility = if (isLoading) View.VISIBLE else View.GONE
+            // Menonaktifkan semua elemen input saat loading
+            val enableState = !isLoading
+            binding.buttonSetPower.isEnabled = enableState
+            binding.buttonGetPower.isEnabled = enableState
+            (binding.layoutPowerSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+
+            binding.buttonSetFrequencyRegion.isEnabled = enableState
+            binding.buttonGetFrequencyRegion.isEnabled = enableState
+            (binding.layoutFrequencyRegionSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+
+            binding.buttonSetFreqHopping.isEnabled = enableState
+            binding.buttonGetFreqHopping?.isEnabled = enableState // Periksa nullability
+            binding.radioGroupFreqHoppingType.isEnabled = enableState // Meskipun mungkin tidak digunakan lagi oleh ViewModel
+            (binding.layoutFreqHoppingSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+
+            binding.buttonSetProtocol.isEnabled = enableState
+            binding.buttonGetProtocol.isEnabled = enableState
+            (binding.layoutProtocolSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+
+            binding.buttonSetRFLink.isEnabled = enableState
+            binding.buttonGetRFLink.isEnabled = enableState
+            (binding.layoutRFLinkSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+
+            binding.buttonSetMemoryBank.isEnabled = enableState
+            binding.buttonGetMemoryBank.isEnabled = enableState
+            (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+            binding.editTextMemoryBankOffset.isEnabled = enableState
+            binding.editTextMemoryBankLength.isEnabled = enableState
+
+            binding.buttonSetSessionGen2.isEnabled = enableState
+            binding.buttonGetSessionGen2.isEnabled = enableState
+            (binding.layoutSessionIdSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+            (binding.layoutInventoriedFlagSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState
+            (binding.layoutQValueSpinner.editText as? AutoCompleteTextView)?.isEnabled = enableState // Untuk Q Value
+
+            binding.buttonSetFastInventory.isEnabled = enableState
+            binding.buttonGetFastInventory.isEnabled = enableState
+            binding.radioGroupFastInventory.isEnabled = enableState // Seluruh group
+
+            binding.switchTagFocus.isEnabled = enableState
+            binding.buttonGetTagFocus?.isEnabled = enableState // Periksa nullability
+            binding.switchFastID.isEnabled = enableState
+            binding.buttonGetFastID?.isEnabled = enableState // Periksa nullability
+
+            binding.buttonFactoryReset.isEnabled = enableState
         }
 
         viewModel.toastMessage.observe(this) { message ->
             message?.let {
                 showToast(it)
-                viewModel.clearToastMessage() // Clear message after showing
+                viewModel.clearToastMessage()
             }
         }
 
-        // Observers for populating spinners/AutoCompleteTextViews
-        viewModel.powerOptions.observe(this) { setSpinnerAdapter(binding.layoutPowerSpinner.editText, it?.map { p -> p.toString() }) }
-        viewModel.frequencyRegionOptions.observe(this) { setSpinnerAdapter(binding.layoutFrequencyRegionSpinner.editText, it) }
-        viewModel.freqHoppingTableOptions.observe(this) { setSpinnerAdapter(binding.layoutFreqHoppingSpinner.editText, it) }
-        viewModel.protocolOptions.observe(this) { setSpinnerAdapter(binding.layoutProtocolSpinner.editText, it) }
-        viewModel.rfLinkProfileOptions.observe(this) { setSpinnerAdapter(binding.layoutRFLinkSpinner.editText, it) }
-        viewModel.memoryBankOptions.observe(this) { setSpinnerAdapter(binding.layoutMemoryBankSpinner.editText, it) }
-        viewModel.sessionIdOptions.observe(this) { setSpinnerAdapter(binding.layoutSessionIdSpinner.editText, it) }
-        viewModel.inventoriedFlagOptions.observe(this) { setSpinnerAdapter(binding.layoutInventoriedFlagSpinner.editText, it) }
-
-
-        // Observers for updating UI with current values from ViewModel
-        viewModel.currentPower.observe(this) { (binding.layoutPowerSpinner.editText as? AutoCompleteTextView)?.setText(it?.toString(), false) }
-        viewModel.currentFrequencyRegion.observe(this) { (binding.layoutFrequencyRegionSpinner.editText as? AutoCompleteTextView)?.setText(it, false) }
-
-        viewModel.currentFreqHoppingType.observe(this) { type ->
-            when (type) {
-                "US" -> binding.radioGroupFreqHoppingType.check(R.id.radioFreqHoppingUS)
-                "Others" -> binding.radioGroupFreqHoppingType.check(R.id.radioFreqHoppingOthers)
-            }
+        // Mengisi Spinner/AutoCompleteTextView dengan opsi dari ViewModel
+        viewModel.powerOptions.observe(this) { options ->
+            setSpinnerAdapter(binding.layoutPowerSpinner.editText, options?.map { it.toString() })
         }
-        viewModel.currentFreqHoppingTable.observe(this) { (binding.layoutFreqHoppingSpinner.editText as? AutoCompleteTextView)?.setText(it, false) }
-        viewModel.isFreqHoppingContainerVisible.observe(this) { binding.containerFreqHopping.visibility = if (it) View.VISIBLE else View.GONE }
+        viewModel.frequencyRegionOptions.observe(this) { options ->
+            setSpinnerAdapter(binding.layoutFrequencyRegionSpinner.editText, options)
+        }
+        viewModel.freqHoppingTableOptions.observe(this) { options ->
+            // Ini mungkin hanya ["Custom Float Value"] sekarang
+            setSpinnerAdapter(binding.layoutFreqHoppingSpinner.editText, options)
+        }
+        viewModel.protocolOptions.observe(this) { options ->
+            setSpinnerAdapter(binding.layoutProtocolSpinner.editText, options)
+        }
+        viewModel.rfLinkProfileOptions.observe(this) { options ->
+            setSpinnerAdapter(binding.layoutRFLinkSpinner.editText, options)
+        }
+        viewModel.memoryBankOptions.observe(this) { options ->
+            setSpinnerAdapter(binding.layoutMemoryBankSpinner.editText, options)
+        }
+        viewModel.sessionIdOptions.observe(this) { options ->
+            setSpinnerAdapter(binding.layoutSessionIdSpinner.editText, options)
+        }
+        viewModel.inventoriedFlagOptions.observe(this) { options ->
+            setSpinnerAdapter(binding.layoutInventoriedFlagSpinner.editText, options)
+        }
+        // Adapter untuk Q Value Spinner
+        viewModel.qValueOptions.let { options -> // qValueOptions adalah List<Int> langsung, bukan LiveData
+            setSpinnerAdapter(binding.layoutQValueSpinner.editText, options.map { it.toString() })
+        }
 
 
-        viewModel.currentProtocol.observe(this) { (binding.layoutProtocolSpinner.editText as? AutoCompleteTextView)?.setText(it, false) }
-        viewModel.currentRFLinkProfile.observe(this) { (binding.layoutRFLinkSpinner.editText as? AutoCompleteTextView)?.setText(it, false) }
+        // Mengupdate UI dengan nilai saat ini dari ViewModel
+        viewModel.currentPower.observe(this) { power ->
+            (binding.layoutPowerSpinner.editText as? AutoCompleteTextView)?.setText(power?.toString(), false)
+        }
+        viewModel.currentFrequencyRegion.observe(this) { region ->
+            (binding.layoutFrequencyRegionSpinner.editText as? AutoCompleteTextView)?.setText(region, false)
+        }
 
-        viewModel.currentMemoryBank.observe(this) { (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.setText(it, false) }
+        // Observer untuk currentFreqHoppingType mungkin tidak lagi diperlukan jika UI tidak menampilkannya
+        // atau jika hanya ada satu tipe (Custom Float).
+        // viewModel.currentFreqHoppingType.observe(this) { type ->
+        //    // ... logika untuk RadioGroup jika masih digunakan ...
+        // }
+        viewModel.currentFreqHoppingTableOrValue.observe(this) { tableOrValue ->
+            (binding.layoutFreqHoppingSpinner.editText as? AutoCompleteTextView)?.setText(tableOrValue ?: "", false)
+        }
+        viewModel.isFreqHoppingContainerVisible.observe(this) { isVisible ->
+            // Pastikan ID container di XML adalah containerFreqHopping atau sesuaikan di bawah
+            binding.containerFreqHopping?.visibility = if (isVisible == true) View.VISIBLE else View.GONE
+        }
+
+        viewModel.currentProtocol.observe(this) { protocol ->
+            (binding.layoutProtocolSpinner.editText as? AutoCompleteTextView)?.setText(protocol, false)
+        }
+        viewModel.currentRFLinkProfile.observe(this) { profile ->
+            (binding.layoutRFLinkSpinner.editText as? AutoCompleteTextView)?.setText(profile, false)
+        }
+
+        viewModel.currentMemoryBank.observe(this) { bankString ->
+            (binding.layoutMemoryBankSpinner.editText as? AutoCompleteTextView)?.setText(bankString, false)
+        }
         viewModel.isMemoryBankDetailsVisible.observe(this) { isVisible ->
-            binding.containerMemoryBankDetails.visibility = if (isVisible) View.VISIBLE else View.GONE
+            // Pastikan ID container di XML adalah containerMemoryBankDetails atau sesuaikan
+            binding.containerMemoryBankDetails?.visibility = if (isVisible == true) View.VISIBLE else View.GONE
         }
-        viewModel.currentMemoryBankOffset.observe(this) { binding.editTextMemoryBankOffset.setText(it?.toString() ?: "") }
-        viewModel.currentMemoryBankLength.observe(this) { binding.editTextMemoryBankLength.setText(it?.toString() ?: "") }
+        viewModel.currentMemoryBankOffset.observe(this) { offsetStr ->
+            // Karena LiveData sekarang String, tidak perlu ?.toString()
+            binding.editTextMemoryBankOffset.setText(offsetStr ?: "")
+        }
+        viewModel.currentMemoryBankLength.observe(this) { lengthStr ->
+            binding.editTextMemoryBankLength.setText(lengthStr ?: "")
+        }
 
-        viewModel.currentSessionId.observe(this) { (binding.layoutSessionIdSpinner.editText as? AutoCompleteTextView)?.setText(it, false) }
-        viewModel.currentInventoriedFlag.observe(this) { (binding.layoutInventoriedFlagSpinner.editText as? AutoCompleteTextView)?.setText(it, false) }
+        viewModel.currentSessionId.observe(this) { sessionId ->
+            (binding.layoutSessionIdSpinner.editText as? AutoCompleteTextView)?.setText(sessionId, false)
+        }
+        viewModel.currentInventoriedFlag.observe(this) { flag ->
+            (binding.layoutInventoriedFlagSpinner.editText as? AutoCompleteTextView)?.setText(flag, false)
+        }
+        viewModel.currentQValue.observe(this) { qValue ->
+            // Update UI untuk Q Value (misalnya, Spinner atau EditText)
+            (binding.layoutQValueSpinner.editText as? AutoCompleteTextView)?.setText(qValue?.toString(), false)
+        }
+
 
         viewModel.isFastInventoryOpen.observe(this) { isOpen ->
             isOpen?.let {
                 if (it) binding.radioGroupFastInventory.check(R.id.radioFastInventoryOpen)
                 else binding.radioGroupFastInventory.check(R.id.radioFastInventoryClose)
-                // For SwitchMaterial:
-                // binding.switchFastInventory.isChecked = it
-            }
+            } ?: binding.radioGroupFastInventory.clearCheck()
         }
 
-        viewModel.isTagFocusEnabled.observe(this) { binding.switchTagFocus.isChecked = it }
-        viewModel.isFastIDEnabled.observe(this) { binding.switchFastID.isChecked = it }
+        viewModel.isTagFocusEnabled.observe(this) { isChecked ->
+            binding.switchTagFocus.isChecked = isChecked // LiveData sudah non-null
+        }
+        viewModel.isFastIDEnabled.observe(this) { isChecked ->
+            binding.switchFastID.isChecked = isChecked // LiveData sudah non-null
+        }
     }
 
     private fun <T> setSpinnerAdapter(autoCompleteTextView: View?, options: List<T>?) {
         (autoCompleteTextView as? AutoCompleteTextView)?.let { actv ->
-            options?.let {
-                val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, it)
+            if (options != null) {
+                val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, options)
                 actv.setAdapter(adapter)
+            } else {
+                actv.setAdapter(null)
             }
         }
     }

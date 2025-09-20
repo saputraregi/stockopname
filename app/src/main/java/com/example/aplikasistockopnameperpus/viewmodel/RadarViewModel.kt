@@ -1,31 +1,25 @@
 package com.example.aplikasistockopnameperpus.viewmodel
 
+import android.app.Application
 import android.content.Context
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Job
+import com.example.aplikasistockopnameperpus.MyApplication
+import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
+import com.rscja.deviceapi.entity.RadarLocationEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Import SDK Chainway
-// import com.rscja.deviceapi.RFIDWithUHFUART // Atau kelas utama UHF reader Anda
-// import com.rscja.deviceapi.entity.RadarLocationEntity
-// import com.rscja.deviceapi.interfaces.IUHFRadarLocationCallback
-// import com.rscja.deviceapi.exception.ConfigurationException
+class RadarViewModel(application: Application) : AndroidViewModel(application) {
 
-// --- DATA CLASS UNTUK SDK (CONTOH JIKA SDK ANDA BERBEDA) ---
-// Jika SDK Anda tidak memiliki RadarLocationEntity, buat data class serupa
-// -----------------------------------------------------------
+    private val sdkManager: ChainwaySDKManager = (application as MyApplication).sdkManager
 
-
-class RadarViewModel : ViewModel() {
-
-    // Ganti MyRadarLocationEntity dengan kelas dari SDK Anda, misal: com.rscja.deviceapi.entity.RadarLocationEntity
-    private val _detectedTags = MutableLiveData<List<MyRadarLocationEntity>>(emptyList())
-    val detectedTags: LiveData<List<MyRadarLocationEntity>> = _detectedTags
+    private val _detectedTags = MutableLiveData<List<RadarLocationEntity>>(emptyList())
+    val detectedTags: LiveData<List<RadarLocationEntity>> = _detectedTags
 
     private val _isTracking = MutableLiveData<Boolean>(false)
     val isTracking: LiveData<Boolean> = _isTracking
@@ -33,185 +27,142 @@ class RadarViewModel : ViewModel() {
     private val _readerAngle = MutableLiveData<Int>(0)
     val readerAngle: LiveData<Int> = _readerAngle
 
-    private val _toastMessage = MutableLiveData<String>()
-    val toastMessage: LiveData<String> = _toastMessage
+    private val _toastMessage = MutableLiveData<String?>()
+    val toastMessage: LiveData<String?> = _toastMessage
 
-    private val _searchRangeProgress = MutableLiveData<Int>(5) // Nilai awal sesuai layout
+    private val _searchRangeProgress = MutableLiveData<Int>(5)
     val searchRangeProgress: LiveData<Int> = _searchRangeProgress
 
+    // --- BARU: LiveData untuk EPC Target ---
+    private val _targetEpcForRadar = MutableLiveData<String?>()
+    val targetEpcForRadar: LiveData<String?> = _targetEpcForRadar
+    // -----------------------------------------
 
-    // TODO: Inisialisasi instance UHF Reader dari SDK Chainway Anda
-    // private var uhfReader: RFIDWithUHFUART? = null // Contoh
-    private var isUhfReaderInitialized = false
-    private var trackingJob: Job? = null
+    init {
+        setupSdkManagerCallbacks()
+    }
 
-
-    // Panggil ini dari Activity (misal di onCreate atau saat dibutuhkan)
-    fun initUhfReader(context: Context) {
-        if (isUhfReaderInitialized) return
-        try {
-            // uhfReader = RFIDWithUHFUART.getInstance() // Atau cara inisialisasi SDK Anda
-            // isUhfReaderInitialized = uhfReader?.init(context) == true // Contoh
-            // if (isUhfReaderInitialized) {
-            //     _toastMessage.postValue("Reader UHF berhasil diinisialisasi")
-            //     // Set default power atau parameter lain jika perlu
-            //     // uhfReader?.setPower(30) // Contoh
-            // } else {
-            //     _toastMessage.postValue("Gagal inisialisasi reader UHF")
-            // }
-            Log.d("RadarViewModel", "SIMULASI: Reader UHF diinisialisasi.")
-            isUhfReaderInitialized = true // HAPUS INI JIKA SUDAH ADA SDK ASLI
-            _toastMessage.postValue("SIMULASI: Reader UHF berhasil diinisialisasi")
-
-
-        } catch (e: Exception) { // Ganti dengan ConfigurationException jika itu yang dilempar SDK
-            Log.e("RadarViewModel", "Error initializing UHF Reader", e)
-            _toastMessage.postValue("Error: ${e.message}")
-            isUhfReaderInitialized = false
+    private fun setupSdkManagerCallbacks() {
+        sdkManager.onUhfRadarDataUpdated = { tags, angle ->
+            _detectedTags.value = tags
+            _readerAngle.value = angle
+        }
+        sdkManager.onUhfRadarError = { message ->
+            _toastMessage.value = message
+            _isTracking.value = false
+            Log.e("RadarViewModel", "SDKManager Radar Error: $message")
+        }
+        sdkManager.onUhfRadarStarted = {
+            _isTracking.value = true
+            Log.d("RadarViewModel", "SDKManager Radar Started callback")
+        }
+        sdkManager.onUhfRadarStopped = {
+            _isTracking.value = false
+            _detectedTags.value = emptyList()
+            _readerAngle.value = 0
+            Log.d("RadarViewModel", "SDKManager Radar Stopped callback")
         }
     }
 
-
-    fun startTracking(context: Context, targetEpc: String?) {
-        // Pastikan reader sudah diinisialisasi (panggil initUhfReader jika belum)
-        if (!isUhfReaderInitialized) {
-            initUhfReader(context) // Coba inisialisasi jika belum
-            if (!isUhfReaderInitialized) {
-                _toastMessage.postValue("Reader belum siap. Coba lagi.")
-                return
-            }
+    fun initRadarFeature(context: Context) {
+        if (!sdkManager.isDeviceReady("uhf")) {
+            Log.d("RadarViewModel", "Reader UHF belum siap, akan diinisialisasi saat startTracking jika perlu.")
+        } else {
+            Log.d("RadarViewModel", "Reader UHF sudah siap.")
         }
+    }
 
-        if (_isTracking.value == true) {
-            _toastMessage.postValue("Pelacakan sudah berjalan.")
+    // --- BARU: Fungsi untuk mengatur EPC target dari Activity ---
+    fun setTargetEpc(epc: String?) {
+        _targetEpcForRadar.value = epc
+        // Jika sedang tracking dan EPC target berubah, mungkin perlu stop dan start ulang,
+        // atau biarkan pengguna yang mengontrolnya. Untuk sekarang, hanya update nilai.
+        // Jika ingin otomatis restart jika sedang tracking:
+        // if (_isTracking.value == true && !epc.isNullOrBlank()) {
+        //     stopTracking() // Hentikan dulu
+        //     // Mungkin perlu delay sedikit sebelum start lagi
+        //     viewModelScope.launch {
+        //         delay(200)
+        //         startTracking(getApplication<Application>().applicationContext) // Panggil startTracking yang baru
+        //     }
+        // }
+    }
+    // ----------------------------------------------------
+
+    // Modifikasi startTracking agar menggunakan _targetEpcForRadar.value
+    fun startTracking(context: Context) { // Hapus parameter targetEpc dari sini
+        val currentTargetEpc = _targetEpcForRadar.value // Ambil dari LiveData
+
+        if (_isTracking.value == true || sdkManager.isUhfRadarActive) {
+            _toastMessage.value = "Pelacakan sudah berjalan."
             return
         }
+        //if (currentTargetEpc.isNullOrBlank() && searchRangeProgress.value != 0) { // Jika target tidak kosong & bukan mode "cari semua"
+        //    _toastMessage.value = "Masukkan atau pilih EPC target untuk dilacak."
+        //    return
+        //}
 
-        _isTracking.postValue(true)
-        _detectedTags.postValue(emptyList()) // Bersihkan data sebelumnya
+        _detectedTags.value = emptyList()
+        _readerAngle.value = 0
 
-        // --- IMPLEMENTASI DENGAN SDK CHAINWAY ASLI ---
-        /*
-        val callback = object : IUHFRadarLocationCallback {
-            override fun getLocationValue(list: MutableList<RadarLocationEntity>?) {
-                viewModelScope.launch {
-                    _detectedTags.postValue(list ?: emptyList())
-                }
-            }
+        // Jika searchRangeProgress.value == 0 (atau nilai khusus yang menandakan "cari semua"),
+        // maka targetEpc bisa null. Jika tidak, targetEpc harus ada.
+        val epcToUseForSdk = if (searchRangeProgress.value == 0) null else currentTargetEpc
 
-            override fun getAngleValue(angle: Int) {
-                 viewModelScope.launch {
-                    _readerAngle.postValue(angle)
-                }
-            }
-        }
-
-        // Parameter untuk startRadarLocation: context, targetEpc, bank, address
-        // Sesuaikan bank dan address jika perlu. Bank_EPC dan 32 adalah umum.
-        // val success = uhfReader?.startRadarLocation(context, targetEpc, IUHF.Bank_EPC, 32, callback)
-        // if (success != true) {
-        //     _isTracking.postValue(false)
-        //     _toastMessage.postValue("Gagal memulai pelacakan radar.")
-        // } else {
-        //     _toastMessage.postValue("Pelacakan radar dimulai...")
-        // }
-        */
-
-        // --- SIMULASI PELACAKAN (HAPUS JIKA MENGGUNAKAN SDK ASLI) ---
-        trackingJob = viewModelScope.launch {
-            Log.d("RadarViewModel", "SIMULASI: Pelacakan dimulai untuk EPC: $targetEpc")
-            var simulatedAngle = 0
-            repeat(100) { // Simulasi update data
-                if (!_isTracking.value!!) return@launch // Hentikan jika sudah di-stop
-
-                val simulatedTags = mutableListOf<MyRadarLocationEntity>()
-                // Tambah tag target jika ada
-                if (!targetEpc.isNullOrEmpty()) {
-                    simulatedTags.add(
-                        MyRadarLocationEntity(
-                            tag = targetEpc,
-                            value = (60..95).random(), // RSSI kuat
-                            angle = (simulatedAngle - 10 + (0..20).random()) % 360
-                        )
-                    )
-                }
-                // Tambah beberapa tag acak lainnya
-                for (i in 1..(2..5).random()) {
-                    simulatedTags.add(
-                        MyRadarLocationEntity(
-                            tag = "EPC_RANDOM_$i",
-                            value = (20..70).random(), // RSSI lebih lemah
-                            angle = (0..359).random()
-                        )
-                    )
-                }
-                _detectedTags.postValue(simulatedTags)
-                _readerAngle.postValue(simulatedAngle)
-
-                simulatedAngle = (simulatedAngle + 15) % 360 // Rotasi simulasi
-                delay(500) // Update setiap 0.5 detik
-            }
-            _isTracking.postValue(false) // Selesai simulasi
-            Log.d("RadarViewModel", "SIMULASI: Pelacakan selesai.")
-        }
-        // --- AKHIR BLOK SIMULASI ---
+        Log.d("RadarViewModel", "Memulai tracking untuk EPC: $epcToUseForSdk (Original Target: $currentTargetEpc, Range: ${searchRangeProgress.value})")
+        sdkManager.startUhfRadar(context.applicationContext, epcToUseForSdk)
     }
 
     fun stopTracking() {
-        if (_isTracking.value == false) return
-
-        // --- IMPLEMENTASI DENGAN SDK CHAINWAY ASLI ---
-        // uhfReader?.stopRadarLocation()
-        // _isTracking.postValue(false)
-        // _toastMessage.postValue("Pelacakan radar dihentikan.")
-
-        // --- SIMULASI (HAPUS JIKA MENGGUNAKAN SDK ASLI) ---
-        trackingJob?.cancel()
-        _isTracking.postValue(false)
-        Log.d("RadarViewModel", "SIMULASI: Pelacakan dihentikan.")
-        _toastMessage.postValue("SIMULASI: Pelacakan dihentikan.")
-        // --- AKHIR BLOK SIMULASI ---
+        if (_isTracking.value == false && !sdkManager.isUhfRadarActive) {
+            return
+        }
+        sdkManager.stopUhfRadar()
     }
 
     fun setSearchParameter(progress: Int) {
-        _searchRangeProgress.postValue(progress)
-        // Logika dari Chainway: int p = 35 - progress;
-        // Misal progress dari 5 (min) sampai 30 (max) di SeekBar.
-        // Jika progress = 5  -> p = 30
-        // Jika progress = 30 -> p = 5
-        // Nilai 'p' ini yang akan dikirim ke SDK
+        val oldProgress = _searchRangeProgress.value
+        _searchRangeProgress.value = progress
         val sdkParameter = 35 - progress
-        // --- IMPLEMENTASI DENGAN SDK CHAINWAY ASLI ---
-        // val success = uhfReader?.setDynamicDistance(sdkParameter)
-        // if (success == true) {
-        //     Log.d("RadarViewModel", "Parameter jarak dinamis diatur ke: $sdkParameter (progress: $progress)")
-        // } else {
-        //     _toastMessage.postValue("Gagal mengatur parameter jarak.")
-        // }
-
-        // --- SIMULASI (HAPUS JIKA MENGGUNAKAN SDK ASLI) ---
-        Log.d("RadarViewModel", "SIMULASI: Parameter jarak dinamis diatur ke: $sdkParameter (dari progress: $progress)")
-        // --- AKHIR BLOK SIMULASI ---
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = sdkManager.setUhfRadarDynamicDistance(sdkParameter)
+            if (success) {
+                Log.d("RadarViewModel", "Parameter jarak dinamis radar berhasil diatur ke: $sdkParameter")
+                // Jika sedang tracking dan progress diubah ke "cari semua" (misal progress == 0)
+                // atau dari "cari semua" ke spesifik, mungkin perlu restart tracking.
+                // Atau jika EPC target kosong dan progress bukan "cari semua".
+                if (_isTracking.value == true) {
+                    if ((oldProgress != 0 && progress == 0) || (oldProgress == 0 && progress != 0 && !_targetEpcForRadar.value.isNullOrBlank())) {
+                        launch(Dispatchers.Main) {
+                            _toastMessage.postValue("Mode pencarian diubah, memulai ulang radar...")
+                            stopTracking()
+                            delay(200) // Beri waktu SDK untuk stop
+                            startTracking(getApplication<Application>().applicationContext)
+                        }
+                    }
+                }
+            } else {
+                Log.e("RadarViewModel", "Gagal mengatur parameter jarak dinamis radar: $sdkParameter")
+                _toastMessage.postValue("Gagal mengatur parameter jarak.")
+            }
+        }
     }
 
-
-    fun releaseUhfReader() {
-        // --- IMPLEMENTASI DENGAN SDK CHAINWAY ASLI ---
-        // uhfReader?.free()
-        // isUhfReaderInitialized = false
-        // uhfReader = null
-        // Log.d("RadarViewModel", "Reader UHF dilepas.")
-
-        // --- SIMULASI (HAPUS JIKA MENGGUNAKAN SDK ASLI) ---
-        Log.d("RadarViewModel", "SIMULASI: Reader UHF dilepas.")
-        isUhfReaderInitialized = false
-        // --- AKHIR BLOK SIMULASI ---
+    fun clearToastMessage() {
+        _toastMessage.value = null
     }
 
     override fun onCleared() {
         super.onCleared()
-        stopTracking() // Pastikan tracking berhenti jika ViewModel dihancurkan
-        releaseUhfReader()
+        Log.d("RadarViewModel", "onCleared_isTracking: ${_isTracking.value}, isSdkRadarActive: ${sdkManager.isUhfRadarActive}")
+        if (sdkManager.isUhfRadarActive) {
+            sdkManager.stopUhfRadar()
+        }
+        sdkManager.onUhfRadarDataUpdated = null
+        sdkManager.onUhfRadarError = null
+        sdkManager.onUhfRadarStarted = null
+        sdkManager.onUhfRadarStopped = null
+        Log.d("RadarViewModel", "ViewModel cleared and listeners removed.")
     }
 }
 

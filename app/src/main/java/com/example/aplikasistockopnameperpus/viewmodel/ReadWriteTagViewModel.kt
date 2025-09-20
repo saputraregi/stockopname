@@ -1,25 +1,18 @@
 package com.example.aplikasistockopnameperpus.viewmodel
 
 import android.app.Application
-// import android.os.Handler // Tidak lagi dibutuhkan untuk simulasi
-// import android.os.Looper // Tidak lagi dibutuhkan untuk simulasi
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
+// import androidx.lifecycle.viewModelScope // Tidak digunakan secara langsung di sini
 import com.example.aplikasistockopnameperpus.R
 import com.example.aplikasistockopnameperpus.MyApplication
 import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
-// Jika Anda perlu menggunakan tipe enum dari SDK untuk parameter lock di ViewModel (opsional):
-// import com.rscja.deviceapi.RFIDWithUHFUART
 
 class ReadWriteTagViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sdkManager: ChainwaySDKManager = (application as MyApplication).sdkManager
-
-    // Tidak lagi memerlukan instance uhfManager langsung di sini, semua melalui sdkManager.
-    // val uhfManager: Any? // DIHAPUS
 
     // === LiveData untuk UI ===
     private val _lastReadEpc = MutableLiveData<String?>()
@@ -31,7 +24,7 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
     private val _isReadingContinuous = MutableLiveData(false)
     val isReadingContinuous: LiveData<Boolean> = _isReadingContinuous
 
-    private val _readError = MutableLiveData<String?>() // Untuk error terkait operasi baca
+    private val _readError = MutableLiveData<String?>()
     val readError: LiveData<String?> = _readError
 
     private val _targetTagEpc = MutableLiveData<String?>() // EPC dari tag yang dibaca untuk operasi tulis/lock
@@ -43,20 +36,17 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
     private val _lockStatus = MutableLiveData<Pair<Boolean, String?>>() // Status operasi lock
     val lockStatus: LiveData<Pair<Boolean, String?>> = _lockStatus
 
-    // LiveData untuk mengontrol status loading umum jika diperlukan
     private val _isLoading = MutableLiveData<Boolean>(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
-    // LiveData untuk status kesiapan reader (opsional, bisa digunakan oleh Fragment)
     private val _isReaderReady = MutableLiveData<Boolean>(sdkManager.isDeviceReady("uhf"))
     val isReaderReady: LiveData<Boolean> = _isReaderReady
 
 
     init {
-        Log.d("RWTViewModel", "ViewModel initialized. Setting up SDK listeners.")
+        Log.d(TAG, "ViewModel initialized. Setting up SDK listeners.")
         setupSdkListeners()
-        // Update status reader awal
-        _isReaderReady.postValue(sdkManager.isDeviceReady("uhf"))
+        _isReaderReady.postValue(sdkManager.isDeviceReady("uhf")) // Update awal
     }
 
     private fun setupSdkListeners() {
@@ -64,15 +54,13 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
             if (deviceType == "UHF") {
                 _isReaderReady.postValue(isConnected)
                 if (!isConnected) {
-                    // Jika reader terputus, hentikan operasi yang mungkin berjalan
-                    // dan beri tahu pengguna.
-                    stopAllOperationsAndNotify("Koneksi reader UHF terputus.")
+                    stopAllOperationsAndNotify(getApplication<Application>().getString(R.string.error_reader_disconnected))
                 }
             }
         }
 
-        sdkManager.onUhfTagScanned = { epc ->
-            if (_isReadingContinuous.value == true) { // Hanya proses jika sedang dalam mode baca kontinu
+        sdkManager.onUhfTagScanned = { epc -> // Untuk inventory kontinu
+            if (_isReadingContinuous.value == true) {
                 _lastReadEpc.postValue(epc)
                 val currentList = _continuousEpcList.value?.toMutableSet() ?: mutableSetOf()
                 if (currentList.add(epc)) {
@@ -81,206 +69,256 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
             }
         }
 
-        sdkManager.onSingleUhfTagEpcRead = { epc ->
-            // Ini untuk hasil pembacaan EPC tunggal, misal untuk readTargetTagForWrite
-            _isLoading.postValue(false) // Selesai loading
-            _targetTagEpc.postValue(epc)
-            _writeStatus.postValue(Pair(true, "Tag target ditemukan: $epc")) // Pesan sukses untuk UI
+        // Callback dari readSingleUhfTagEpcNearby()
+        sdkManager.onSingleUhfTagEpcRead = { epc, tid -> // tid bisa null
+            _isLoading.postValue(false)
+            // Cek apakah ini hasil dari readTargetTagForWrite atau startReading(false)
+            if (_targetTagEpc.value == getApplication<Application>().getString(R.string.status_membaca_target)) {
+                _targetTagEpc.postValue(epc)
+                // Jika Anda ingin juga menampilkan TID yang terbaca bersamaan (jika ada) saat membaca target:
+                val message = if (!tid.isNullOrBlank()) {
+                    getApplication<Application>().getString(R.string.status_target_tag_found_with_tid, epc, tid)
+                } else {
+                    getApplication<Application>().getString(R.string.status_target_tag_found, epc)
+                }
+                _writeStatus.postValue(Pair(true, message)) // Pesan sukses untuk UI Write
+            } else if (_isReadingContinuous.value == false) { // Hasil dari startReading(false)
+                _lastReadEpc.postValue(epc)
+                // Jika ingin menampilkan TID juga di UI Read Fragment:
+                // _readError.postValue("TID: $tid") // Contoh, sesuaikan dengan UI Anda
+            }
+            _isReadingContinuous.postValue(false) // Pastikan ini disetel false untuk operasi baca tunggal
         }
 
         sdkManager.onSingleUhfTagReadFailed = { errorMessage ->
             _isLoading.postValue(false)
-            _targetTagEpc.postValue(null) // Tidak ada target yang ditemukan
-            _writeStatus.postValue(Pair(false, "Gagal membaca tag target: $errorMessage"))
+            _isReadingContinuous.postValue(false) // Pastikan ini disetel false
+            if (_targetTagEpc.value == getApplication<Application>().getString(R.string.status_membaca_target)) {
+                _targetTagEpc.postValue(null)
+                _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_failed_to_read_target_tag, errorMessage)))
+            } else { // Gagal saat startReading(false)
+                _lastReadEpc.postValue(null)
+                _readError.postValue(getApplication<Application>().getString(R.string.error_failed_to_read_single_tag, errorMessage))
+            }
         }
 
-        sdkManager.onUhfInventoryFinished = {
+        sdkManager.onUhfInventoryFinished = { // Untuk inventory kontinu
             _isReadingContinuous.postValue(false)
             _isLoading.postValue(false)
-            if (_lastReadEpc.value == getApplication<Application>().getString(R.string.status_membaca)) { // Bandingkan dengan string resource
+            // Logika untuk _lastReadEpc setelah inventory stop:
+            if (_lastReadEpc.value == getApplication<Application>().getString(R.string.status_membaca)) { // Jika "Membaca..."
                 _lastReadEpc.postValue(
-                    if (_continuousEpcList.value.isNullOrEmpty()) null
-                    else getApplication<Application>().getString(R.string.uhf_scan_stopped) // Atau string "Dihentikan"
+                    if (_continuousEpcList.value.isNullOrEmpty()) {
+                        getApplication<Application>().getString(R.string.status_no_tags_found_after_scan) // "Tidak ada tag ditemukan"
+                    } else {
+                        // Jika ada item, _lastReadEpc sudah berisi EPC terakhir.
+                        // Mungkin tidak perlu mengubahnya, atau tampilkan pesan "Dihentikan".
+                        getApplication<Application>().getString(R.string.uhf_scan_stopped)
+                    }
                 )
             }
+            // Jika sudah ada EPC yang terbaca, _lastReadEpc tidak diubah di sini, biarkan EPC terakhir.
         }
 
         sdkManager.onError = { errorMessage ->
             _isLoading.postValue(false)
-            // Error ini bisa berlaku untuk berbagai operasi, jadi update semua status error
-            _readError.postValue("SDK Error: $errorMessage")
-            _writeStatus.postValue(Pair(false, "SDK Error: $errorMessage"))
-            _lockStatus.postValue(Pair(false, "SDK Error: $errorMessage"))
-            // Pastikan operasi dihentikan jika ada error SDK yang fatal
-            if (_isReadingContinuous.value == true) {
-                _isReadingContinuous.postValue(false) // Hentikan UI pembacaan kontinu
-            }
+            if (_isReadingContinuous.value == true) _isReadingContinuous.postValue(false)
+
+            // Berikan pesan error yang lebih spesifik jika memungkinkan,
+            // atau biarkan Fragment yang menentukan konteks errornya.
+            val genericSdkError = getApplication<Application>().getString(R.string.sdk_error_prefix, errorMessage)
+            _readError.postValue(genericSdkError)
+            _writeStatus.postValue(Pair(false, genericSdkError))
+            _lockStatus.postValue(Pair(false, genericSdkError))
         }
 
         sdkManager.onTagWriteSuccess = { writtenEpc ->
             _isLoading.postValue(false)
-            _writeStatus.postValue(Pair(true, "Berhasil menulis EPC baru: $writtenEpc"))
+            _writeStatus.postValue(Pair(true, getApplication<Application>().getString(R.string.status_write_epc_success, writtenEpc)))
             _targetTagEpc.postValue(writtenEpc) // EPC target sekarang adalah yang baru ditulis
+            _lastReadEpc.postValue(writtenEpc) // Update juga lastReadEpc
         }
 
         sdkManager.onTagWriteFailed = { error ->
             _isLoading.postValue(false)
-            _writeStatus.postValue(Pair(false, "Gagal menulis EPC: $error"))
+            _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_write_epc_failed, error)))
         }
 
         sdkManager.onTagLockSuccess = {
             _isLoading.postValue(false)
-            _lockStatus.postValue(Pair(true, "Berhasil mengunci memori tag."))
+            _lockStatus.postValue(Pair(true, getApplication<Application>().getString(R.string.status_lock_tag_success)))
         }
 
         sdkManager.onTagLockFailed = { error ->
             _isLoading.postValue(false)
-            _lockStatus.postValue(Pair(false, "Gagal mengunci memori tag: $error"))
+            _lockStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_lock_tag_failed, error)))
         }
 
         sdkManager.onUhfOperationStopped = {
-            // Callback umum jika operasi UHF dihentikan (bisa karena sukses, gagal, atau dibatalkan)
-            // Pastikan state loading dan reading direset jika belum.
+            // Ini adalah callback umum. Pastikan state loading dan reading direset.
             if (_isLoading.value == true) _isLoading.postValue(false)
             if (_isReadingContinuous.value == true) _isReadingContinuous.postValue(false)
+            Log.d(TAG, "onUhfOperationStopped: isLoading=${_isLoading.value}, isReadingContinuous=${_isReadingContinuous.value}")
         }
     }
 
     private fun stopAllOperationsAndNotify(errorMessage: String) {
-        sdkManager.stopUhfOperation() // Hentikan operasi SDK apa pun
+        sdkManager.stopUhfOperation()
         _isReadingContinuous.postValue(false)
         _isLoading.postValue(false)
         _readError.postValue(errorMessage)
         _writeStatus.postValue(Pair(false, errorMessage))
         _lockStatus.postValue(Pair(false, errorMessage))
+        _lastReadEpc.postValue(null) // Reset EPC terakhir
+        _targetTagEpc.postValue(null) // Reset target
+        _continuousEpcList.postValue(emptySet()) // Kosongkan daftar kontinu
     }
 
     fun startReading(continuous: Boolean) {
-        if (!_isReaderReady.value!!) { // Gunakan status reader dari LiveData
+        if (_isReaderReady.value != true) {
             _readError.postValue(getApplication<Application>().getString(R.string.reader_not_ready))
             return
         }
         if (_isLoading.value == true) {
-            _readError.postValue("Operasi lain sedang berjalan.")
+            _readError.postValue(getApplication<Application>().getString(R.string.error_operation_in_progress))
             return
         }
 
         _isLoading.postValue(true)
         _isReadingContinuous.postValue(continuous)
         _lastReadEpc.postValue(getApplication<Application>().getString(R.string.status_membaca))
-        _readError.postValue(null) // Hapus error sebelumnya
+        _readError.postValue(null)
+        _targetTagEpc.postValue(null) // Reset target jika memulai pembacaan umum
+        _writeStatus.postValue(Pair(false, null)) // Reset status tulis
+        _lockStatus.postValue(Pair(false, null)) // Reset status lock
 
         if (continuous) {
-            _continuousEpcList.value = emptySet() // Kosongkan list untuk pembacaan kontinu baru
-            Log.d("RWTViewModel", "Memulai baca kontinu via SDK.")
+            _continuousEpcList.value = emptySet()
+            Log.d(TAG, "Starting continuous reading (inventory) via SDK.")
             sdkManager.startUhfInventory()
         } else { // Baca Tunggal EPC
-            Log.d("RWTViewModel", "Memulai baca tunggal EPC via SDK.")
-            // Menggunakan fungsi yang didedikasikan untuk membaca EPC tunggal dari SDK Manager
-            sdkManager.readSingleUhfTagEpc()
-            // Hasilnya akan ditangani oleh callback onSingleUhfTagEpcRead / onSingleUhfTagReadFailed
-            // yang akan mengupdate _lastReadEpc dan _isLoading.
-            // Untuk baca tunggal, _isReadingContinuous akan di-set false oleh onSingleUhfTagEpcRead/Failed,
-            // atau oleh onUhfOperationStopped.
+            Log.d(TAG, "Starting single EPC read (nearby) via SDK.")
+            sdkManager.readSingleUhfTagEpcNearby()
+            // Hasil akan ditangani oleh onSingleUhfTagEpcRead / onSingleUhfTagReadFailed
         }
     }
 
     fun stopContinuousReading() {
-        // Hanya hentikan jika memang sedang membaca kontinu
+        // Hanya hentikan jika memang sedang membaca (baik kontinu maupun proses loading lainnya)
         if (_isReadingContinuous.value == true || _isLoading.value == true) {
-            Log.d("RWTViewModel", "Menghentikan operasi baca via SDK.")
-            sdkManager.stopUhfOperation() // Ini akan memicu onUhfInventoryFinished atau onUhfOperationStopped
+            Log.d(TAG, "Stopping read operation via SDK.")
+            sdkManager.stopUhfOperation()
+            // State _isReadingContinuous dan _isLoading akan diupdate oleh callback SDK
+            // (onUhfInventoryFinished atau onUhfOperationStopped)
+        } else {
+            Log.d(TAG, "StopContinuousReading called, but not actively reading or loading.")
         }
-        // State _isReadingContinuous dan _isLoading akan diupdate oleh callback SDK
     }
 
     fun readTargetTagForWrite() {
-        if (!_isReaderReady.value!!) {
+        if (_isReaderReady.value != true) {
             _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.reader_not_ready)))
             _targetTagEpc.postValue(null)
             return
         }
         if (_isLoading.value == true) {
-            _writeStatus.postValue(Pair(false, "Operasi lain sedang berjalan."))
+            _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_operation_in_progress)))
             return
         }
 
         _isLoading.postValue(true)
+        _isReadingContinuous.postValue(false) // Ini bukan pembacaan kontinu
         _targetTagEpc.postValue(getApplication<Application>().getString(R.string.status_membaca_target))
-        _writeStatus.postValue(Pair(false, null)) // Hapus status tulis sebelumnya
-        Log.d("RWTViewModel", "Membaca tag target untuk ditulis via SDK.")
-        sdkManager.readSingleUhfTagEpc() // Gunakan fungsi baca EPC tunggal
-        // Hasilnya akan ditangani oleh onSingleUhfTagEpcRead / onSingleUhfTagReadFailed
+        _writeStatus.postValue(Pair(false, null))
+        _readError.postValue(null)
+        _lastReadEpc.postValue(null)
+        _lockStatus.postValue(Pair(false, null))
+
+        Log.d(TAG, "Reading target tag for write operation via SDK.")
+        sdkManager.readSingleUhfTagEpcNearby()
+        // Hasil akan ditangani oleh onSingleUhfTagEpcRead / onSingleUhfTagReadFailed
     }
 
     fun writeEpcToTag(targetEpcFilter: String?, newEpcHex: String, accessPasswordHex: String) {
-        if (!_isReaderReady.value!!) {
+        if (_isReaderReady.value != true) {
             _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.reader_not_ready)))
             return
         }
-        if (targetEpcFilter.isNullOrEmpty()) {
-            _writeStatus.postValue(Pair(false, "EPC target belum ditentukan. Baca tag target terlebih dahulu."))
+
+        // Gunakan targetEpcFilter jika ada, jika tidak, gunakan _targetTagEpc.value
+        // Jika keduanya null/kosong, SDK Manager akan menulis ke tag terdekat (jika currentEpcFilter null)
+        val actualTargetEpcForFilter = targetEpcFilter ?: _targetTagEpc.value
+
+        if (newEpcHex.isBlank() || newEpcHex.length != 24 || !newEpcHex.matches(Regex("^[0-9A-Fa-f]*$"))) {
+            _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_invalid_epc_format_specific_length, 24)))
             return
         }
         if (_isLoading.value == true) {
-            _writeStatus.postValue(Pair(false, "Operasi lain sedang berjalan."))
+            _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_operation_in_progress)))
             return
         }
 
         _isLoading.postValue(true)
-        _writeStatus.postValue(Pair(false, "Menulis EPC: $newEpcHex...")) // Status proses
-        Log.d("RWTViewModel", "Menulis EPC '$newEpcHex' ke target '$targetEpcFilter' via SDK.")
+        _writeStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.status_writing_epc, newEpcHex)))
+        Log.d(TAG, "Writing EPC '$newEpcHex' to target (filter: '$actualTargetEpcForFilter') via SDK.")
+
         sdkManager.writeUhfTag(
-            epcToWrite = newEpcHex,
-            currentEpc = targetEpcFilter, // Untuk filter di SDK Manager jika diimplementasikan
-            passwordAccess = accessPasswordHex.ifEmpty { "00000000" } // Default password jika kosong
+            epcDataHex = newEpcHex,
+            currentEpcFilter = actualTargetEpcForFilter, // Teruskan filter yang sudah ditentukan
+            passwordAccess = accessPasswordHex.ifEmpty { "00000000" }
         )
         // Hasilnya akan ditangani oleh onTagWriteSuccess / onTagWriteFailed
     }
 
     fun lockTagMemory(
-        targetEpcFilter: String?,
+        targetEpcFilter: String?, // EPC tag yang akan di-lock
         accessPasswordHex: String,
-        lockBankInt: Int,      // Terima integer dari Fragment
-        lockActionInt: Int     // Terima integer dari Fragment
+        lockBankInt: Int,      // Parameter dari UI, akan diteruskan ke SDK Manager
+        lockActionInt: Int     // Parameter dari UI, akan diteruskan ke SDK Manager
     ) {
-        if (!_isReaderReady.value!!) {
+        if (_isReaderReady.value != true) {
             _lockStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.reader_not_ready)))
             return
         }
-        if (targetEpcFilter.isNullOrEmpty()) {
-            _lockStatus.postValue(Pair(false, "EPC target belum ditentukan. Baca tag target terlebih dahulu."))
+
+        // Untuk lock, EPC target (filter) biasanya wajib. Gunakan yang dari parameter atau yang sudah dibaca.
+        val actualTargetEpcForLock = targetEpcFilter ?: _targetTagEpc.value
+
+        if (actualTargetEpcForLock.isNullOrEmpty()) {
+            _lockStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_no_target_epc_for_lock)))
             return
         }
         if (_isLoading.value == true) {
-            _lockStatus.postValue(Pair(false, "Operasi lain sedang berjalan."))
+            _lockStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.error_operation_in_progress)))
             return
         }
 
         _isLoading.postValue(true)
-        _lockStatus.postValue(Pair(false, "Mengunci tag...")) // Status proses
-        Log.d("RWTViewModel", "Mengunci tag '$targetEpcFilter' via SDK. Bank: $lockBankInt, Aksi: $lockActionInt")
+        _lockStatus.postValue(Pair(false, getApplication<Application>().getString(R.string.status_locking_tag)))
+        Log.d(TAG, "Locking tag '$actualTargetEpcForLock' via SDK. Bank: $lockBankInt, Action: $lockActionInt")
+
+        // Perhatikan nama parameter di sdkManager.lockUhfTag
         sdkManager.lockUhfTag(
-            targetEpc = targetEpcFilter,
+            targetEpc = actualTargetEpcForLock, // Pastikan ini tidak null di sini
             passwordAccess = accessPasswordHex.ifEmpty { "00000000" },
-            lockBankInt = lockBankInt,
-            lockActionInt = lockActionInt
+            lockBank = lockBankInt,     // Nama parameter di SDKManager adalah 'lockBank'
+            lockAction = lockActionInt  // Nama parameter di SDKManager adalah 'lockAction'
         )
         // Hasilnya akan ditangani oleh onTagLockSuccess / onTagLockFailed
     }
 
     fun clearContinuousListFromUI() {
         _continuousEpcList.postValue(emptySet())
-        // _lastReadEpc.postValue(null) // Opsional, tergantung perilaku yang diinginkan
-        Log.d("RWTViewModel", "Daftar EPC kontinu dibersihkan dari ViewModel.")
+        // _lastReadEpc.postValue(null) // Opsional, tidak selalu perlu di-clear di sini
+        Log.d(TAG, "Continuous EPC list cleared from ViewModel.")
     }
 
     override fun onCleared() {
         super.onCleared()
-        Log.d("RWTViewModel", "ViewModel Cleared. Menghentikan operasi SDK dan membersihkan listener.")
-        sdkManager.stopUhfOperation() // Pastikan semua operasi UHF dihentikan
+        Log.d(TAG, "ViewModel Cleared. Stopping SDK operations and clearing listeners.")
+        sdkManager.stopUhfOperation() // Hentikan operasi UHF jika ada
 
-        // Hapus semua listener dari sdkManager untuk mencegah memory leak
+        // Membersihkan semua listener dari SDKManager
         sdkManager.onDeviceStatusChanged = null
         sdkManager.onUhfTagScanned = null
         sdkManager.onSingleUhfTagEpcRead = null
@@ -292,8 +330,10 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
         sdkManager.onTagLockSuccess = null
         sdkManager.onTagLockFailed = null
         sdkManager.onUhfOperationStopped = null
-        // Tidak perlu memanggil sdkManager.releaseResources() di sini jika itu
-        // dikelola oleh Application's lifecycle (misalnya, di MyApplication.onTerminate())
-        // atau oleh Activity utama yang bertanggung jawab atas koneksi awal.
+    }
+
+    companion object {
+        private const val TAG = "RWTViewModel" // Tag untuk logging ViewModel ini
     }
 }
+

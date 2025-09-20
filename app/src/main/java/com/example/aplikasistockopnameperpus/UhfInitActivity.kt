@@ -81,13 +81,13 @@ class UhfInitActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         val menuItems = listOf(
-            MenuItem("Import/Export", R.drawable.ic_launcher_background, MenuAction.IMPORT_EXPORT),
-            MenuItem("Pair & Write Tag", R.drawable.ic_launcher_background, MenuAction.PAIRING_WRITE),
-            MenuItem("Stock Opname", R.drawable.ic_launcher_background, MenuAction.STOCK_OPNAME),
-            MenuItem("Report", R.drawable.ic_launcher_background, MenuAction.REPORT),
-            MenuItem("Read/Write Tag", R.drawable.ic_launcher_background, MenuAction.READ_WRITE_TAG),
-            MenuItem("Radar", R.drawable.ic_launcher_background, MenuAction.RADAR),
-            MenuItem("Setup", R.drawable.ic_launcher_background, MenuAction.SETUP)
+            MenuItem("Import/Export", R.drawable.ic_import, MenuAction.IMPORT_EXPORT),
+            MenuItem("Pair & Write Tag", R.drawable.ic_booktagging, MenuAction.PAIRING_WRITE),
+            MenuItem("Stock Opname", R.drawable.ic_stock, MenuAction.STOCK_OPNAME),
+            MenuItem("Report", R.drawable.ic_report, MenuAction.REPORT),
+            MenuItem("Read/Write Tag", R.drawable.ic_scan_uhf, MenuAction.READ_WRITE_TAG),
+            MenuItem("Radar", R.drawable.ic_radar, MenuAction.RADAR),
+            MenuItem("Setup", R.drawable.ic_settings, MenuAction.SETUP)
         )
         menuAdapter = MenuAdapter(menuItems, sdkManager.isDeviceReady("uhf")) { menuAction ->
             handleMenuAction(menuAction)
@@ -96,13 +96,13 @@ class UhfInitActivity : AppCompatActivity() {
     }
 
     private fun handleMenuAction(menuAction: MenuAction) {
-        if (!isUhfReaderActuallyConnected && (menuAction == MenuAction.STOCK_OPNAME ||
+        /*if (!isUhfReaderActuallyConnected && (menuAction == MenuAction.STOCK_OPNAME ||
                     menuAction == MenuAction.READ_WRITE_TAG ||
                     menuAction == MenuAction.RADAR ||
                     menuAction == MenuAction.PAIRING_WRITE)) { // Tambahkan PAIRING_WRITE jika butuh reader
             showToast("Harap hubungkan reader terlebih dahulu.")
             return
-        }
+        }*/
 
         when (menuAction) {
             MenuAction.IMPORT_EXPORT -> startActivity(Intent(this, ImportExportActivity::class.java))

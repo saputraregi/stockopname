@@ -67,8 +67,7 @@ enum class PairingStatus {
 // Enum untuk Status Stock Opname
 enum class OpnameStatus {
     NOT_SCANNED,       // Belum ter-scan dalam sesi opname saat ini
-    FOUND_CORRECT_LOCATION, // Ditemukan di lokasi yang diharapkan
-    FOUND_WRONG_LOCATION,   // Ditemukan, tapi di lokasi yang salah
+    FOUND,   // Ditemukan, tapi di lokasi yang salah
     MISSING,                // Tidak ditemukan setelah sesi opname selesai (ditandai manual atau by system)
     NEW_ITEM                // Item baru yang terdeteksi dan tidak ada di master awal
 }

@@ -1,4 +1,4 @@
-package com.example.aplikasistockopnameperpus
+package com.example.aplikasistockopnameperpus // Sesuaikan package Anda
 
 import android.os.Bundle
 import android.util.Log
@@ -7,23 +7,20 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.semantics.text
 import androidx.lifecycle.Observer
-import androidx.lifecycle.observe
-import com.example.aplikasistockopnameperpus.databinding.ActivityRadarBinding // Gunakan ViewBinding
+import com.example.aplikasistockopnameperpus.databinding.ActivityRadarBinding
+import com.example.aplikasistockopnameperpus.fragment.SelectTagDialogFragment // Pastikan import ini benar
 import com.example.aplikasistockopnameperpus.viewmodel.RadarViewModel
-// Import kelas RadarLocationEntity dari SDK Anda
-// import com.rscja.deviceapi.entity.RadarLocationEntity // Contoh, sesuaikan
 
-class RadarActivity : AppCompatActivity() {
+// IMPLEMENTASIKAN INTERFACE LISTENER DI SINI
+class RadarActivity : AppCompatActivity(), SelectTagDialogFragment.OnTagSelectedListener {
 
     private lateinit var binding: ActivityRadarBinding
     private val radarViewModel: RadarViewModel by viewModels()
 
-    // Ganti dengan tipe data yang benar dari SDK Anda jika bukan RadarLocationEntity
-    // private var currentTagList: List<RadarLocationEntity> = emptyList()
-    private var targetEpc: String? = null
+    companion object {
+        private const val TAG = "RadarActivity" // Untuk logging
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,60 +30,68 @@ class RadarActivity : AppCompatActivity() {
         setupToolbar()
         setupListeners()
         observeViewModel()
-
-        // Ambil EPC target dari intent jika ada (misalnya jika activity ini dipanggil dengan target tertentu)
-        // targetEpc = intent.getStringExtra("TARGET_EPC")
-        // binding.editTextEpcTarget.setText(targetEpc)
-
-        // Inisialisasi SDK Reader di ViewModel atau di sini jika lebih sesuai
-        // radarViewModel.initUhfReader(this) // Contoh
     }
 
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbarRadar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = getString(R.string.title_activity_radar) // Pastikan string ada
     }
 
     private fun setupListeners() {
+        binding.buttonSelectTagFromListRadar.setOnClickListener {
+            showSelectTagDialog() // Memanggil fungsi untuk menampilkan dialog
+        }
+
         binding.buttonStartRadar.setOnClickListener {
-            targetEpc = binding.editTextEpcTarget.text.toString().trim().uppercase()
-            if (targetEpc.isNullOrEmpty()) {
-                // Mode scan semua, atau berikan peringatan jika EPC wajib
-                // Toast.makeText(this, "Memulai pencarian semua tag", Toast.LENGTH_SHORT).show()
-            }
-            // Kirim target EPC yang valid (bisa null/kosong jika scan semua)
-            radarViewModel.startTracking(this, targetEpc)
+            val targetEpcFromInput = binding.editTextEpcTargetRadar.text.toString().trim().uppercase()
+            radarViewModel.setTargetEpc(targetEpcFromInput.ifEmpty { null })
+            radarViewModel.startTracking(this)
         }
 
         binding.buttonStopRadar.setOnClickListener {
             radarViewModel.stopTracking()
         }
 
-        binding.seekBarSearchRange.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        binding.seekBarSearchRangeRadar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
-                    // Logika Chainway: int p = 35 - progress;
-                    // Pastikan `setSearchParameter` di ViewModel menangani nilai ini dengan benar
-                    radarViewModel.setSearchParameter(progress)
+                    Log.d(TAG, "SeekBar onProgressChanged (fromUser), progress: $progress")
                 }
             }
-
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                seekBar?.let {
+                    Log.d(TAG, "SeekBar onStopTrackingTouch, progress: ${it.progress}")
+                    radarViewModel.setSearchParameter(it.progress)
+                }
+            }
         })
     }
 
     private fun observeViewModel() {
+        radarViewModel.targetEpcForRadar.observe(this, Observer { epc ->
+            if (binding.editTextEpcTargetRadar.text.toString() != (epc ?: "")) {
+                binding.editTextEpcTargetRadar.setText(epc ?: "")
+            }
+        })
+
         radarViewModel.isTracking.observe(this, Observer { isTracking ->
             binding.buttonStartRadar.isEnabled = !isTracking
             binding.buttonStopRadar.isEnabled = isTracking
-            binding.editTextEpcTarget.isEnabled = !isTracking
-            binding.seekBarSearchRange.isEnabled = isTracking // Atau logika lain sesuai kebutuhan
+            binding.buttonSelectTagFromListRadar.isEnabled = !isTracking
+            binding.editTextEpcTargetRadar.isEnabled = !isTracking
+            binding.seekBarSearchRangeRadar.isEnabled = !isTracking
 
             if (isTracking) {
                 binding.radarView.startRadar()
-                binding.textViewRadarStatus.text = if (targetEpc.isNullOrEmpty()) "Mencari semua tag..." else "Mencari: $targetEpc"
+                val currentTarget = radarViewModel.targetEpcForRadar.value
+                val currentProgress = radarViewModel.searchRangeProgress.value ?: binding.seekBarSearchRangeRadar.progress
+                binding.textViewRadarStatus.text = if (currentTarget.isNullOrEmpty()) {
+                    if (currentProgress == 0) getString(R.string.status_radar_searching_all)
+                    else getString(R.string.status_radar_idle_no_target_set_but_specific_range)
+                } else {
+                    getString(R.string.status_radar_searching_epc, currentTarget)
+                }
             } else {
                 binding.radarView.stopRadar()
                 binding.textViewRadarStatus.text = getString(R.string.status_radar_idle)
@@ -94,32 +99,42 @@ class RadarActivity : AppCompatActivity() {
         })
 
         radarViewModel.detectedTags.observe(this, Observer { tags ->
-            // currentTagList = tags
-            // Update RadarView dengan data tag baru
-            // binding.radarView.bindingData(tags, targetEpc)
-            Log.d("RadarActivity", "Tags detected: ${tags.size}")
-            // Jika Anda punya implementasi bindingData di RadarView.kt:
-            binding.radarView.bindingData(tags, targetEpc ?: "")
-
-
-            // Contoh sederhana: tampilkan jumlah tag terdeteksi
-            // binding.textViewRadarStatus.text = "Tag terdeteksi: ${tags.size}"
+            val currentTarget = radarViewModel.targetEpcForRadar.value
+            binding.radarView.bindingData(tags, currentTarget)
+            Log.d(TAG, "Detected tags updated in UI: ${tags.size}")
         })
 
         radarViewModel.readerAngle.observe(this, Observer { angle ->
-            // Jika RadarView Anda mendukung rotasi berdasarkan sudut antena
-            // binding.radarView.setRotation(-angle.toFloat()) // Sesuai logika Chainway
-            Log.d("RadarActivity", "Reader angle: $angle")
+            // Logika untuk readerAngle (jika diperlukan untuk merotasi RadarView atau bagiannya)
+            Log.d(TAG, "Reader angle updated in UI: $angle")
         })
 
         radarViewModel.toastMessage.observe(this, Observer { message ->
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            message?.let {
+                Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+                radarViewModel.clearToastMessage()
+            }
         })
 
-        // Observe progress dari ViewModel jika ingin seekBar dikontrol dari sana
-        radarViewModel.searchRangeProgress.observe(this) { progress ->
-            binding.seekBarSearchRange.progress = progress
-        }
+        radarViewModel.searchRangeProgress.observe(this, Observer { progress ->
+            if (binding.seekBarSearchRangeRadar.progress != progress) {
+                binding.seekBarSearchRangeRadar.progress = progress
+            }
+        })
+    }
+
+    private fun showSelectTagDialog() {
+        val dialogFragment = SelectTagDialogFragment.newInstance()
+        // SET LISTENER DI SINI
+        dialogFragment.listener = this
+        dialogFragment.show(supportFragmentManager, SelectTagDialogFragment.TAG)
+    }
+
+    // IMPLEMENTASI METODE DARI OnTagSelectedListener
+    override fun onTagSelected(selectedEpc: String) {
+        radarViewModel.setTargetEpc(selectedEpc)
+        Toast.makeText(this, getString(R.string.toast_epc_selected, selectedEpc), Toast.LENGTH_SHORT).show()
+        // EditText akan otomatis terupdate karena meng-observe targetEpcForRadar
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -132,14 +147,9 @@ class RadarActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Penting: Hentikan tracking jika activity dijeda untuk menghemat baterai & resource
         if (radarViewModel.isTracking.value == true) {
+            Log.d(TAG, "onPause: Stopping radar tracking.")
             radarViewModel.stopTracking()
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        // radarViewModel.releaseUhfReader() // Contoh, jika ViewModel menangani lifecycle reader
     }
 }
