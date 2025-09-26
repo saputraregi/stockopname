@@ -295,7 +295,14 @@
                         android:text="@string/stat_new_unexpected"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="@color/default_text_color" />
-                    <TextView android:id="@+id/text_view_new_or_unexpected_books_value" tools:text="10" android:textAppearance="?attr/textAppearanceBodyMedium" android:textStyle="bold" android:layout_gravity="end"/>
+
+                    <TextView
+                        android:id="@+id/text_view_new_or_unexpected_books_value"
+                        android:layout_gravity="end"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color"
+                        android:textStyle="bold"
+                        tools:text="10" />
                 </GridLayout>
             </com.google.android.material.card.MaterialCardView>
 

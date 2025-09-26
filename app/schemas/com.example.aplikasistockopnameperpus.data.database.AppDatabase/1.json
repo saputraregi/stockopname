@@ -1,0 +1,359 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "9781249ccd4d37b82a1f9aeb6c3b912c",
+    "entities": [
+      {
+        "tableName": "book_master",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `itemCode` TEXT NOT NULL, `title` TEXT NOT NULL, `callNumber` TEXT, `collectionType` TEXT, `inventoryCode` TEXT, `receivedDate` TEXT, `locationName` TEXT, `orderDate` TEXT, `slimsItemStatus` TEXT, `siteName` TEXT, `source` TEXT, `price` TEXT, `priceCurrency` TEXT, `invoiceDate` TEXT, `inputDate` TEXT, `lastUpdate` TEXT, `rfidTagHex` TEXT, `tid` TEXT, `importTimestamp` INTEGER NOT NULL, `pairingTimestamp` INTEGER, `pairingStatus` TEXT NOT NULL, `lastSeenTimestamp` INTEGER, `actualScannedLocation` TEXT, `opnameStatus` TEXT NOT NULL, `isNewOrUnexpected` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemCode",
+            "columnName": "itemCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callNumber",
+            "columnName": "callNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "collectionType",
+            "columnName": "collectionType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "inventoryCode",
+            "columnName": "inventoryCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "receivedDate",
+            "columnName": "receivedDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "locationName",
+            "columnName": "locationName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "orderDate",
+            "columnName": "orderDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "slimsItemStatus",
+            "columnName": "slimsItemStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "siteName",
+            "columnName": "siteName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "price",
+            "columnName": "price",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "priceCurrency",
+            "columnName": "priceCurrency",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "invoiceDate",
+            "columnName": "invoiceDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "inputDate",
+            "columnName": "inputDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdate",
+            "columnName": "lastUpdate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rfidTagHex",
+            "columnName": "rfidTagHex",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tid",
+            "columnName": "tid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "importTimestamp",
+            "columnName": "importTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pairingTimestamp",
+            "columnName": "pairingTimestamp",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pairingStatus",
+            "columnName": "pairingStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenTimestamp",
+            "columnName": "lastSeenTimestamp",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "actualScannedLocation",
+            "columnName": "actualScannedLocation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "opnameStatus",
+            "columnName": "opnameStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isNewOrUnexpected",
+            "columnName": "isNewOrUnexpected",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_book_master_itemCode",
+            "unique": true,
+            "columnNames": [
+              "itemCode"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_book_master_itemCode` ON `${TABLE_NAME}` (`itemCode`)"
+          },
+          {
+            "name": "index_book_master_rfidTagHex",
+            "unique": true,
+            "columnNames": [
+              "rfidTagHex"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_book_master_rfidTagHex` ON `${TABLE_NAME}` (`rfidTagHex`)"
+          }
+        ]
+      },
+      {
+        "tableName": "stock_opname_reports",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`reportId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `reportName` TEXT NOT NULL, `startTimeMillis` INTEGER NOT NULL, `endTimeMillis` INTEGER, `totalItemsExpected` INTEGER NOT NULL, `totalItemsFound` INTEGER NOT NULL, `totalItemsMissing` INTEGER NOT NULL, `totalItemsNewOrUnexpected` INTEGER NOT NULL, `totalItemsMisplaced` INTEGER NOT NULL, `userId` TEXT, `reportDate` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "reportId",
+            "columnName": "reportId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reportName",
+            "columnName": "reportName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTimeMillis",
+            "columnName": "startTimeMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endTimeMillis",
+            "columnName": "endTimeMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "totalItemsExpected",
+            "columnName": "totalItemsExpected",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalItemsFound",
+            "columnName": "totalItemsFound",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalItemsMissing",
+            "columnName": "totalItemsMissing",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalItemsNewOrUnexpected",
+            "columnName": "totalItemsNewOrUnexpected",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalItemsMisplaced",
+            "columnName": "totalItemsMisplaced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reportDate",
+            "columnName": "reportDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "reportId"
+          ]
+        }
+      },
+      {
+        "tableName": "stock_opname_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`reportId` INTEGER NOT NULL, `rfidTagHexScanned` TEXT NOT NULL, `tidScanned` TEXT, `itemCodeMaster` TEXT, `titleMaster` TEXT, `scanTimestamp` INTEGER NOT NULL, `status` TEXT NOT NULL, `actualLocationIfDifferent` TEXT, `expectedLocationMaster` TEXT, `isNewOrUnexpectedItem` INTEGER NOT NULL, PRIMARY KEY(`reportId`, `rfidTagHexScanned`), FOREIGN KEY(`reportId`) REFERENCES `stock_opname_reports`(`reportId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "reportId",
+            "columnName": "reportId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rfidTagHexScanned",
+            "columnName": "rfidTagHexScanned",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tidScanned",
+            "columnName": "tidScanned",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "itemCodeMaster",
+            "columnName": "itemCodeMaster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "titleMaster",
+            "columnName": "titleMaster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "scanTimestamp",
+            "columnName": "scanTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actualLocationIfDifferent",
+            "columnName": "actualLocationIfDifferent",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "expectedLocationMaster",
+            "columnName": "expectedLocationMaster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isNewOrUnexpectedItem",
+            "columnName": "isNewOrUnexpectedItem",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "reportId",
+            "rfidTagHexScanned"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_stock_opname_items_reportId",
+            "unique": false,
+            "columnNames": [
+              "reportId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_stock_opname_items_reportId` ON `${TABLE_NAME}` (`reportId`)"
+          },
+          {
+            "name": "index_stock_opname_items_rfidTagHexScanned",
+            "unique": false,
+            "columnNames": [
+              "rfidTagHexScanned"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_stock_opname_items_rfidTagHexScanned` ON `${TABLE_NAME}` (`rfidTagHexScanned`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "stock_opname_reports",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "reportId"
+            ],
+            "referencedColumns": [
+              "reportId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9781249ccd4d37b82a1f9aeb6c3b912c')"
+    ]
+  }
+}

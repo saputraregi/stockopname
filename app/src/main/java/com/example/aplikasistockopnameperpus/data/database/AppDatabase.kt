@@ -2,6 +2,7 @@ package com.example.aplikasistockopnameperpus.data.database
 
 import android.content.Context
 import android.util.Log
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -16,8 +17,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         StockOpnameReport::class,
         StockOpnameItem::class
     ],
-    version = 1, // Target versi database
-    exportSchema = true
+    version = 2, // Target versi database
+    exportSchema = true,
+    autoMigrations = [
+        // Jika Anda bermigrasi dari versi 1 ke 2, lalu sekarang 2 ke 3:
+        // AutoMigration(from = 1, to = 2), // Biarkan migrasi lama jika ada
+        AutoMigration(from = 1, to = 2)    // Tambahkan migrasi baru
+        // Atau jika Anda tidak menggunakan autoMigrations sebelumnya dan ini perubahan pertama yang memerlukan versi baru:
+        // AutoMigration(from = 1, to = 2)
+    ]
 )
 abstract class AppDatabase : RoomDatabase() {
 
