@@ -11,6 +11,8 @@ data class FilterCriteria(
     val itemCodeQuery: String? = null,
     val locationQuery: String? = null,
     val epcQuery: String? = null,
+    val scanStartDateMillis: Long? = null,
+    val scanEndDateMillis: Long? = null,
     // Tambahkan field lain yang ingin Anda filter, misalnya:
     // val authorQuery: String? = null,
     // val publisherQuery: String? = null,

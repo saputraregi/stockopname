@@ -2,59 +2,52 @@ package com.example.aplikasistockopnameperpus
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
+import android.net.Uri // Diperlukan untuk openExportedFile
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts // Ditambahkan
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-// import androidx.compose.ui.text.intl.Locale // Tidak digunakan, bisa dihapus jika hanya ini
+import androidx.core.content.FileProvider // PENTING: Untuk membuka file
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.lifecycleScope // Sudah ada
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.aplikasistockopnameperpus.adapter.ReportItemAdapter
-import com.example.aplikasistockopnameperpus.data.database.OpnameStatus
+import com.example.aplikasistockopnameperpus.adapter.ReportItemAdapter // Pastikan ini sudah diubah untuk BookMasterDisplayWrapper
 import com.example.aplikasistockopnameperpus.databinding.ActivityReportDetailBinding
 import com.example.aplikasistockopnameperpus.model.FilterCriteria
-import com.example.aplikasistockopnameperpus.util.exporter.ExportResult
-import com.example.aplikasistockopnameperpus.util.exporter.TxtFileExporter
+import com.example.aplikasistockopnameperpus.viewmodel.BookMasterDisplayWrapper // Import jika onItemClick menggunakannya
 import com.example.aplikasistockopnameperpus.viewmodel.ReportDetailGlobalState
 import com.example.aplikasistockopnameperpus.viewmodel.ReportDetailViewModel
 import com.example.aplikasistockopnameperpus.viewmodel.ReportDetailViewModelFactory
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat // Ditambahkan
-import java.util.Date // Ditambahkan
-import java.util.Locale // Pastikan ini java.util.Locale
+import java.io.File // PENTING: Untuk FileProvider
 
 class ReportDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityReportDetailBinding
     private var currentReportId: Long = -1L
-    private lateinit var reportItemAdapter: ReportItemAdapter
-    private val txtExporter = TxtFileExporter() // Instansiasi di sini
+    private var currentReportSessionName: String = "Laporan Detail" // Untuk judul Toolbar dan nama file ekspor
 
-    // --- Ditambahkan untuk Ekspor ---
-    private var reportNameForExport: String = "report_data" // Default
-    private val createTxtFileLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri: Uri? ->
-        Log.d(TAG, "CreateDocument callback. Received URI: $uri")
-        uri?.let { validUri ->
-            Log.d(TAG, "URI is valid. Calling writeItemCodesToUri.")
-            writeItemCodesToUri(validUri)
-        } ?: run {
-            Log.w(TAG, "URI is null. File creation probably cancelled by user.")
-            Toast.makeText(this, "Operasi pembuatan file dibatalkan.", Toast.LENGTH_SHORT).show()
+    private lateinit var reportItemAdapter: ReportItemAdapter // Pastikan ini menerima BookMasterDisplayWrapper
+
+    // Launcher untuk FilterActivity
+    private val filterActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val returnedFilterCriteria = result.data?.getParcelableExtra<FilterCriteria>(FilterActivity.EXTRA_RESULT_FILTER_CRITERIA)
+            returnedFilterCriteria?.let {
+                Log.d(TAG, "Filter criteria untuk report diterima: $it")
+                reportDetailViewModel.applyFilterToReportItems(it)
+            }
+        } else {
+            Log.d(TAG, "Filter page dibatalkan atau tidak mengembalikan data.")
         }
     }
-    // --- Akhir Bagian Ditambahkan untuk Ekspor ---
 
     private val reportDetailViewModel: ReportDetailViewModel by lazy {
-        if (currentReportId == -1L) {
-            throw IllegalStateException("Report ID not initialized before ViewModel access.")
-        }
         ViewModelProvider(
             this,
             ReportDetailViewModelFactory(application, currentReportId)
@@ -63,6 +56,7 @@ class ReportDetailActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_REPORT_ID = "extra_report_id"
+        const val EXTRA_TITLE = "extra_title"
         private const val TAG = "ReportDetailActivity"
     }
 
@@ -72,7 +66,7 @@ class ReportDetailActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         currentReportId = intent.getLongExtra(EXTRA_REPORT_ID, -1L)
-        Log.d(TAG, "Received report ID: $currentReportId")
+        currentReportSessionName = intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.title_activity_report_detail_default)
 
         if (currentReportId == -1L) {
             Toast.makeText(this, getString(R.string.error_invalid_report_id), Toast.LENGTH_LONG).show()
@@ -95,7 +89,8 @@ class ReportDetailActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_export_found_items_txt -> {
-                exportFoundItemsToTxt() // --- Diubah: Memanggil fungsi yang benar ---
+                val baseFileName = currentReportSessionName.take(50).replace("[^a-zA-Z0-9_.-]".toRegex(), "_")
+                reportDetailViewModel.exportFilteredItemCodesToTxt(baseFileName)
                 true
             }
             android.R.id.home -> {
@@ -105,102 +100,6 @@ class ReportDetailActivity : AppCompatActivity() {
             else -> super.onOptionsItemSelected(item)
         }
     }
-
-    // --- Fungsi Baru/Dimodifikasi untuk Ekspor ---
-    private fun exportFoundItemsToTxt() {
-        Log.d(TAG, "exportFoundItemsToTxt called.")
-        if (currentReportId == -1L) {
-            Toast.makeText(this, "Report ID tidak valid untuk ekspor.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (reportNameForExport.isBlank() || reportNameForExport == "report_data") {
-            Log.w(TAG, "reportNameForExport belum diinisialisasi dengan benar dari header, menggunakan default atau menunggu loadReportHeaderDetails.")
-            // Pertimbangkan untuk memanggil loadReportHeaderDetails lagi atau menunggu callback-nya jika ini sering terjadi
-            // Untuk sekarang, kita lanjutkan dengan nama default jika belum terisi dari header
-        }
-
-        lifecycleScope.launch {
-            val allReportItems = try {
-                reportDetailViewModel.bookRepository.getItemsForReportList(currentReportId)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error fetching items for export", e)
-                Toast.makeText(this@ReportDetailActivity, "Gagal mengambil data untuk ekspor.", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            Log.d(TAG, "Fetched ${allReportItems.size} items for report ID $currentReportId for export.")
-
-            val itemsToExport = allReportItems.filter { innerItem ->
-                (innerItem.status.equals(OpnameStatus.FOUND.name, ignoreCase = true) ||
-                        innerItem.status.equals("DITEMUKAN_MASTER", ignoreCase = true)) && // Sesuaikan dengan string status Anda
-                        !innerItem.isNewOrUnexpectedItem && !innerItem.itemCodeMaster.isNullOrBlank()
-            }
-            Log.d(TAG, "${itemsToExport.size} items to actually export after filtering.")
-
-            val itemCodesOnly = itemsToExport.mapNotNull { it.itemCodeMaster }
-
-            if (itemCodesOnly.isEmpty()) {
-                Log.w(TAG, "No item codes found to export.")
-                Toast.makeText(this@ReportDetailActivity, getString(R.string.message_no_found_items_with_code_to_export), Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-
-            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "${reportNameForExport}_found_items_$timeStamp.txt"
-            Log.d(TAG, "Launching file picker with suggested name: $fileName")
-            createTxtFileLauncher.launch(fileName)
-        }
-    }
-
-    private fun writeItemCodesToUri(uri: Uri) {
-        Log.d(TAG, "writeItemCodesToUri called with URI: $uri")
-
-        lifecycleScope.launch {
-            Log.d(TAG, "Coroutine for writing started.")
-            // Ambil ulang data untuk memastikan konsistensi, atau teruskan dari exportFoundItemsToTxt jika alurnya memungkinkan
-            val allReportItems = reportDetailViewModel.bookRepository.getItemsForReportList(currentReportId)
-            val itemsToExport = allReportItems.filter { item ->
-                (item.status.equals(OpnameStatus.FOUND.name, ignoreCase = true) ||
-                        item.status.equals("DITEMUKAN_MASTER", ignoreCase = true)) &&
-                        !item.isNewOrUnexpectedItem && !item.itemCodeMaster.isNullOrBlank()
-            }
-            val itemCodesOnly = itemsToExport.mapNotNull { it.itemCodeMaster }
-
-            if (itemCodesOnly.isEmpty()) {
-                Log.w(TAG, "No item codes to write (checked again in writeItemCodesToUri).")
-                Toast.makeText(this@ReportDetailActivity, getString(R.string.message_no_found_items_with_code_to_export), Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-
-            try {
-                Log.d(TAG, "Attempting to open output stream for URI.")
-                contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    Log.d(TAG, "Output stream opened. Calling TxtFileExporter.exportItemCodeList.")
-                    when (val result = txtExporter.exportItemCodeList(itemCodesOnly, outputStream)) {
-                        is ExportResult.Success -> {
-                            Toast.makeText(this@ReportDetailActivity, getString(R.string.export_txt_success, uri.lastPathSegment ?: "file"), Toast.LENGTH_LONG).show()
-                            Log.i(TAG, "Successfully exported ${result.itemsExported} item codes. Path: ${result.filePath}")
-                        }
-                        is ExportResult.Error -> {
-                            Toast.makeText(this@ReportDetailActivity, result.errorMessage, Toast.LENGTH_LONG).show()
-                            Log.e(TAG, "Export failed: ${result.errorMessage}")
-                        }
-                        is ExportResult.NoDataToExport -> {
-                            Log.w(TAG, "ExportResult.NoDataToExport received from exporter.")
-                            Toast.makeText(this@ReportDetailActivity, "Tidak ada data kode item untuk diekspor (dari exporter).", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } ?: run {
-                    Log.e(TAG, "Failed to open output stream for URI: $uri")
-                    Toast.makeText(this@ReportDetailActivity, getString(R.string.export_txt_failed, "Gagal membuka output stream."), Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during TXT export process", e)
-                Toast.makeText(this@ReportDetailActivity, getString(R.string.export_txt_failed, e.message), Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-    // --- Akhir Fungsi Baru/Dimodifikasi untuk Ekspor ---
 
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbarReportDetail)
@@ -212,9 +111,8 @@ class ReportDetailActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        reportItemAdapter = ReportItemAdapter { item ->
-            Log.d(TAG, "Clicked item: ${item.titleMaster ?: item.itemCodeMaster}")
-            Toast.makeText(this, "Item: ${item.titleMaster ?: item.itemCodeMaster}", Toast.LENGTH_SHORT).show()
+        reportItemAdapter = ReportItemAdapter { wrapper ->
+            Toast.makeText(this, "Item: ${wrapper.bookMaster.title ?: wrapper.bookMaster.itemCode}", Toast.LENGTH_SHORT).show()
         }
         binding.recyclerViewReportItems.apply {
             adapter = reportItemAdapter
@@ -231,28 +129,20 @@ class ReportDetailActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            reportDetailViewModel.filteredReportItems.collectLatest { items ->
-                Log.d(TAG, "Updating adapter with ${items.size} items.")
-                reportItemAdapter.submitList(items)
-                if (items.isEmpty() && reportDetailViewModel.globalState.value !is ReportDetailGlobalState.Loading) {
-                    binding.recyclerViewReportItems.visibility = View.GONE
-                    binding.textViewEmptyReportItems.visibility = View.VISIBLE
-                    if (reportDetailViewModel.currentReportFilterCriteria.value != FilterCriteria()) {
-                        binding.textViewEmptyReportItems.text = getString(R.string.message_no_items_match_filter)
-                    } else {
-                        binding.textViewEmptyReportItems.text = getString(R.string.message_no_items_in_report)
-                    }
-                } else {
-                    binding.recyclerViewReportItems.visibility = View.VISIBLE
-                    binding.textViewEmptyReportItems.visibility = View.GONE
-                }
+            reportDetailViewModel.filteredReportDisplayItems.collectLatest { displayItems ->
+                Log.d(TAG, "Updating adapter dengan ${displayItems.size} display items.")
+                reportItemAdapter.submitList(displayItems)
+                updateEmptyStateView(displayItems.isEmpty())
             }
         }
 
         lifecycleScope.launch {
-            reportDetailViewModel.globalState.collectLatest { state ->
-                Log.d(TAG, "Global state changed: $state")
+            reportDetailViewModel.globalListState.collectLatest { state ->
+                Log.d(TAG, "Global list state changed: $state")
                 when (state) {
+                    is ReportDetailGlobalState.Idle -> {
+                        binding.progressBarReportDetail.visibility = View.GONE
+                    }
                     is ReportDetailGlobalState.Loading -> {
                         binding.progressBarReportDetail.visibility = View.VISIBLE
                         binding.textViewEmptyReportItems.visibility = View.GONE
@@ -260,20 +150,42 @@ class ReportDetailActivity : AppCompatActivity() {
                     is ReportDetailGlobalState.Error -> {
                         binding.progressBarReportDetail.visibility = View.GONE
                         Toast.makeText(this@ReportDetailActivity, state.message, Toast.LENGTH_LONG).show()
-                        if (reportItemAdapter.itemCount == 0) {
-                            binding.recyclerViewReportItems.visibility = View.GONE
-                            binding.textViewEmptyReportItems.visibility = View.VISIBLE
-                            binding.textViewEmptyReportItems.text = state.message
-                        }
+                        updateEmptyStateView(reportItemAdapter.itemCount == 0, state.message)
                     }
                     is ReportDetailGlobalState.Success -> {
                         binding.progressBarReportDetail.visibility = View.GONE
-                        state.message?.let {
-                            Toast.makeText(this@ReportDetailActivity, it, Toast.LENGTH_SHORT).show()
-                        }
                     }
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            reportDetailViewModel.exportTxtState.collectLatest { state ->
+                Log.d(TAG, "Export state changed: $state")
+                val exportMenuItem = binding.toolbarReportDetail.menu.findItem(R.id.action_export_found_items_txt)
+                when (state) {
                     is ReportDetailGlobalState.Idle -> {
-                        binding.progressBarReportDetail.visibility = View.GONE
+                        exportMenuItem?.isEnabled = true
+                    }
+                    is ReportDetailGlobalState.Loading -> {
+                        exportMenuItem?.isEnabled = false
+                        Toast.makeText(this@ReportDetailActivity, getString(R.string.message_exporting_data), Toast.LENGTH_SHORT).show()
+                    }
+                    is ReportDetailGlobalState.Error -> {
+                        exportMenuItem?.isEnabled = true
+                        Toast.makeText(this@ReportDetailActivity, state.message, Toast.LENGTH_LONG).show()
+                        reportDetailViewModel.clearExportState()
+                    }
+                    is ReportDetailGlobalState.Success -> {
+                        exportMenuItem?.isEnabled = true
+                        state.message?.let {
+                            Toast.makeText(this@ReportDetailActivity, it, Toast.LENGTH_LONG).show()
+                        }
+                        // Jika ViewModel mengirimkan URI atau path file di state Success:
+                        // (state as? ReportDetailGlobalState.FileExportSuccess)?.fileUri?.let { uri -> // Jika Anda membuat state khusus
+                        //      openExportedFile(uri)
+                        // }
+                        reportDetailViewModel.clearExportState()
                     }
                 }
             }
@@ -289,10 +201,12 @@ class ReportDetailActivity : AppCompatActivity() {
     private fun loadReportHeaderDetails() {
         lifecycleScope.launch {
             try {
-                val report = reportDetailViewModel.bookRepository.getReportById(currentReportId)
+                // Menggunakan fungsi dari ViewModel
+                val report = reportDetailViewModel.getReportHeaderDetails(currentReportId)
                 if (report != null) {
-                    supportActionBar?.title = getString(R.string.title_report_detail_prefix, report.reportName.take(25))
-                    binding.textViewReportNameHeader.text = getString(R.string.report_session_name_prefix, report.reportName)
+                    currentReportSessionName = report.reportName
+                    supportActionBar?.title = getString(R.string.title_report_detail_prefix, currentReportSessionName.take(30))
+                    binding.textViewReportNameHeader.text = getString(R.string.report_session_name_prefix, currentReportSessionName)
                     binding.textViewReportStatsHeader.text = getString(
                         R.string.report_stats_format,
                         report.totalItemsExpected,
@@ -300,27 +214,17 @@ class ReportDetailActivity : AppCompatActivity() {
                         report.totalItemsMissing,
                         report.totalItemsNewOrUnexpected
                     )
-                    // --- Ditambahkan: Inisialisasi reportNameForExport ---
-                    reportNameForExport = report.reportName
-                        .replace("\\s+".toRegex(), "_")
-                        .replace("[^a-zA-Z0-9_.-]".toRegex(), "")
-                        .take(50)
-                    if (reportNameForExport.isBlank()) reportNameForExport = "exported_report"
-                    Log.d(TAG, "reportNameForExport initialized to: $reportNameForExport")
-                    // --- Akhir Bagian Ditambahkan ---
                 } else {
                     supportActionBar?.title = getString(R.string.title_report_not_found)
                     binding.textViewReportNameHeader.text = getString(R.string.error_report_not_found_detail)
                     binding.textViewReportStatsHeader.visibility = View.GONE
                     binding.buttonShowFilterPageReportDetail.isEnabled = false
-                    reportNameForExport = "unknown_report_${currentReportId}" // Fallback
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading report header", e)
                 supportActionBar?.title = getString(R.string.title_report_error)
                 binding.textViewReportNameHeader.text = getString(R.string.error_loading_report_header)
                 binding.textViewReportStatsHeader.visibility = View.GONE
-                reportNameForExport = "error_report_${currentReportId}" // Fallback
             }
         }
     }
@@ -328,9 +232,11 @@ class ReportDetailActivity : AppCompatActivity() {
     private fun openFilterPageForReport() {
         val intent = Intent(this, FilterActivity::class.java)
         val currentCriteria = reportDetailViewModel.currentReportFilterCriteria.value
-        Log.d(TAG, "Opening filter page with current criteria: $currentCriteria")
+        Log.d(TAG, "Membuka filter page dengan kriteria saat ini: $currentCriteria")
         intent.putExtra(FilterActivity.EXTRA_CURRENT_FILTER_CRITERIA, currentCriteria)
-        startActivityForResult(intent, FilterActivity.REQUEST_CODE_FILTER)
+        // Menggunakan konstanta yang sudah didefinisikan di FilterActivity
+        intent.putExtra(FilterActivity.EXTRA_CONTEXT_USAGE, FilterActivity.CONTEXT_REPORT_DETAIL)
+        filterActivityLauncher.launch(intent)
     }
 
     private fun updateActiveFilterInfo() {
@@ -339,24 +245,48 @@ class ReportDetailActivity : AppCompatActivity() {
             binding.textViewActiveFilterInfo.text = filterDescription
             binding.textViewActiveFilterInfo.visibility = View.VISIBLE
         } else {
+            binding.textViewActiveFilterInfo.text = getString(R.string.filter_not_active_placeholder)
             binding.textViewActiveFilterInfo.visibility = View.GONE
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == FilterActivity.REQUEST_CODE_FILTER) {
-            if (resultCode == Activity.RESULT_OK) {
-                val returnedFilterCriteria = data?.getParcelableExtra<FilterCriteria>(FilterActivity.EXTRA_RESULT_FILTER_CRITERIA)
-                if (returnedFilterCriteria != null) {
-                    Log.d(TAG, "Filter criteria for report received: $returnedFilterCriteria")
-                    reportDetailViewModel.applyFilterToReportItems(returnedFilterCriteria)
-                } else {
-                    Log.d(TAG, "No filter criteria returned, but result was OK.")
-                }
-            } else {
-                Log.d(TAG, "Filter page was canceled or returned no data.")
+    private fun updateEmptyStateView(isEmpty: Boolean, customMessage: String? = null) {
+        if (isEmpty) {
+            binding.recyclerViewReportItems.visibility = View.GONE
+            binding.textViewEmptyReportItems.visibility = View.VISIBLE
+            binding.textViewEmptyReportItems.text = customMessage ?:
+                    if (reportDetailViewModel.currentReportFilterCriteria.value != FilterCriteria()) {
+                        getString(R.string.message_no_items_match_filter)
+                    } else {
+                        getString(R.string.message_no_items_in_report_initial)
+                    }
+        } else {
+            binding.recyclerViewReportItems.visibility = View.VISIBLE
+            binding.textViewEmptyReportItems.visibility = View.GONE
+        }
+    }
+
+    private fun openExportedFile(fileUri: Uri) {
+        try {
+            val authority = "${applicationContext.packageName}.provider"
+            val fileToOpen = File(fileUri.path!!) // ViewModel mengembalikan Uri.fromFile()
+            val contentUri = FileProvider.getUriForFile(this, authority, fileToOpen)
+
+            Log.d(TAG, "Attempting to open file with content URI: $contentUri (original URI: $fileUri)")
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, "text/plain")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
+            if (intent.resolveActivity(packageManager) != null) {
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, getString(R.string.error_no_app_to_open_file), Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error membuka file yang diekspor: $fileUri", e)
+            Toast.makeText(this, getString(R.string.error_failed_to_open_file, e.message), Toast.LENGTH_SHORT).show()
         }
     }
 }
+

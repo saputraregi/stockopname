@@ -69,23 +69,25 @@
             android:id="@+id/textView_process_status_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Status Proses:"
             android:layout_marginTop="16dp"
+            android:text="Status Proses:"
+            android:textColor="@color/default_text_color"
             android:textStyle="bold"
-            app:layout_constraintTop_toBottomOf="@+id/cardView_input_item_code"
-            app:layout_constraintStart_toStartOf="parent"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/cardView_input_item_code" />
 
         <TextView
             android:id="@+id/textView_process_status"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            tools:text="Silakan scan atau masukkan kode item buku."
             android:layout_marginStart="8dp"
             android:textAppearance="?attr/textAppearanceBody2"
-            app:layout_constraintTop_toTopOf="@+id/textView_process_status_label"
+            android:textColor="@color/default_text_color"
             app:layout_constraintBottom_toBottomOf="@+id/textView_process_status_label"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/textView_process_status_label"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintTop_toTopOf="@+id/textView_process_status_label"
+            tools:text="Silakan scan atau masukkan kode item buku." />
 
         <!-- Detail Buku (Awalnya GONE) -->
         <androidx.cardview.widget.CardView
@@ -111,99 +113,109 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Kode Item:"
+                    android:textColor="@color/default_text_color"
                     android:textStyle="bold"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintStart_toStartOf="parent" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <TextView
                     android:id="@+id/textView_item_code_value"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    tools:text="B00001XYZ"
                     android:layout_marginStart="8dp"
-                    app:layout_constraintTop_toTopOf="@+id/textView_item_code_label"
+                    android:textColor="@color/default_text_color"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/textView_item_code_label"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintTop_toTopOf="@+id/textView_item_code_label"
+                    tools:text="B00001XYZ" />
 
                 <TextView
                     android:id="@+id/textView_book_title_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Judul Buku:"
                     android:layout_marginTop="8dp"
+                    android:text="Judul Buku:"
+                    android:textColor="@color/default_text_color"
                     android:textStyle="bold"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_item_code_value"
-                    app:layout_constraintStart_toStartOf="parent" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_item_code_value" />
 
                 <TextView
                     android:id="@+id/textView_book_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    tools:text="Belajar Android Jetpack Compose Modern"
                     android:layout_marginStart="8dp"
-                    app:layout_constraintTop_toTopOf="@+id/textView_book_title_label"
+                    android:textColor="@color/default_text_color"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/textView_book_title_label"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintTop_toTopOf="@+id/textView_book_title_label"
+                    tools:text="Belajar Android Jetpack Compose Modern" />
 
                 <TextView
                     android:id="@+id/textView_current_rfid_status_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Status Pairing:"
-                    android:textStyle="bold"
                     android:layout_marginTop="8dp"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_book_title"
-                    app:layout_constraintStart_toStartOf="parent" />
+                    android:text="Status Pairing:"
+                    android:textColor="@color/default_text_color"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_book_title" />
 
                 <TextView
                     android:id="@+id/textView_current_rfid_status"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    tools:text="BELUM DITAG"
                     android:layout_marginStart="8dp"
-                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_status_label"
+                    android:textColor="@color/default_text_color"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/textView_current_rfid_status_label"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_status_label"
+                    tools:text="BELUM DITAG" />
 
                 <TextView
                     android:id="@+id/textView_current_rfid_tag_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="EPC (Database):"
-                    android:textStyle="bold"
                     android:layout_marginTop="8dp"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_status"
-                    app:layout_constraintStart_toStartOf="parent" />
+                    android:text="EPC (Database):"
+                    android:textColor="@color/default_text_color"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_status" />
 
                 <TextView
                     android:id="@+id/textView_current_rfid_tag"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    tools:text="423030303033000000000000"
                     android:layout_marginStart="8dp"
-                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_tag_label"
+                    android:textColor="@color/default_text_color"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/textView_current_rfid_tag_label"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_tag_label"
+                    tools:text="423030303033000000000000" />
 
                 <TextView
                     android:id="@+id/textView_current_tid_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="TID (Database):"
-                    android:textStyle="bold"
                     android:layout_marginTop="8dp"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_tag"
-                    app:layout_constraintStart_toStartOf="parent" />
+                    android:text="TID (Database):"
+                    android:textColor="@color/default_text_color"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_tag" />
 
                 <TextView
                     android:id="@+id/textView_current_tid"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    tools:text="E28011700000020B1A76269C"
                     android:layout_marginStart="8dp"
-                    app:layout_constraintTop_toTopOf="@+id/textView_current_tid_label"
+                    android:textColor="@color/default_text_color"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/textView_current_tid_label"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintTop_toTopOf="@+id/textView_current_tid_label"
+                    tools:text="E28011700000020B1A76269C" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
@@ -213,51 +225,55 @@
             android:id="@+id/textView_scanned_tid_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="TID Terbaca (Tag):"
-            android:textStyle="bold"
             android:layout_marginTop="12dp"
+            android:text="TID Terbaca (Tag):"
+            android:textColor="@color/default_text_color"
+            android:textStyle="bold"
             android:visibility="gone"
-            tools:visibility="visible"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/layout_book_details"
-            app:layout_constraintStart_toStartOf="parent"/>
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/textView_scanned_tid_value"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            tools:text="E200341201300000000000AA"
             android:layout_marginStart="8dp"
+            android:textColor="@color/default_text_color"
             android:visibility="gone"
-            tools:visibility="visible"
-            app:layout_constraintTop_toTopOf="@+id/textView_scanned_tid_label"
             app:layout_constraintBottom_toBottomOf="@+id/textView_scanned_tid_label"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/textView_scanned_tid_label"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintTop_toTopOf="@+id/textView_scanned_tid_label"
+            tools:text="E200341201300000000000AA"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/textView_scanned_epc_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="EPC Terbaca (Tag):"
-            android:textStyle="bold"
             android:layout_marginTop="4dp"
+            android:text="EPC Terbaca (Tag):"
+            android:textColor="@color/default_text_color"
+            android:textStyle="bold"
             android:visibility="gone"
-            tools:visibility="visible"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textView_scanned_tid_value"
-            app:layout_constraintStart_toStartOf="parent"/>
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/textView_scanned_epc_value"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            tools:text="4A4A4A4A4A4A4A4A4A4A4A4A"
             android:layout_marginStart="8dp"
+            android:textColor="@color/default_text_color"
             android:visibility="gone"
-            tools:visibility="visible"
-            app:layout_constraintTop_toTopOf="@+id/textView_scanned_epc_label"
             app:layout_constraintBottom_toBottomOf="@+id/textView_scanned_epc_label"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/textView_scanned_epc_label"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintTop_toTopOf="@+id/textView_scanned_epc_label"
+            tools:text="4A4A4A4A4A4A4A4A4A4A4A4A"
+            tools:visibility="visible" />
 
         <!-- Progress Bar (Awalnya GONE) -->
         <ProgressBar

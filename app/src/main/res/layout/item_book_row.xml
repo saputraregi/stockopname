@@ -40,11 +40,12 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/default_text_color"
             android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/imageViewStatusIcon"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:text="BK-00123"/>
+            tools:text="BK-00123" />
 
         <TextView
             android:id="@+id/textViewBookTitle"
@@ -52,10 +53,11 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/default_text_color"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@id/textViewItemCode"
             app:layout_constraintTop_toBottomOf="@id/textViewItemCode"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:text="Judul Buku yang Cukup Panjang Sekali"/>
+            tools:text="Judul Buku yang Cukup Panjang Sekali" />
 
         <TextView
             android:id="@+id/textViewBookLocation"
@@ -63,10 +65,11 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/default_text_color"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@id/textViewItemCode"
             app:layout_constraintTop_toBottomOf="@id/textViewBookTitle"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:text="Lokasi: Rak A1 / Baris 3"/>
+            tools:text="Lokasi: Rak A1 / Baris 3" />
 
         <TextView
             android:id="@+id/textViewRfidTag"
@@ -74,11 +77,11 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:textAppearance="?attr/textAppearanceCaption"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/default_text_color"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@id/textViewItemCode"
             app:layout_constraintTop_toBottomOf="@id/textViewBookLocation"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:text="EPC: E200ABCD1234"/>
+            tools:text="EPC: E200ABCD1234" />
 
         <TextView
             android:id="@+id/textViewRfidPairingStatus"
@@ -109,15 +112,15 @@
             android:id="@+id/textViewScanTime"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceCaption"
-            android:textColor="?attr/colorOnSurfaceVariant"
             android:layout_marginStart="8dp"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:textColor="@color/default_text_color"
             android:visibility="gone"
-            app:layout_constraintStart_toEndOf="@id/textViewScanStatus"
             app:layout_constraintBaseline_toBaselineOf="@id/textViewScanStatus"
             app:layout_constraintEnd_toEndOf="parent"
-            tools:visibility="visible"
-            tools:text="Terakhir dilihat: 10:30:45"/>
+            app:layout_constraintStart_toEndOf="@id/textViewScanStatus"
+            tools:text="Terakhir dilihat: 10:30:45"
+            tools:visibility="visible" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

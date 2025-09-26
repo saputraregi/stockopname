@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/filter_by_date_range"
+        android:textAppearance="?attr/textAppearanceSubtitle1"
+        android:layout_marginBottom="8dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/textFieldLayout_start_date"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_start_date"
+        app:endIconMode="custom"
+    app:endIconDrawable="@drawable/ic_calendar_icon"
+    app:endIconContentDescription="@string/content_desc_select_start_date"> <!-- Deskripsi untuk aksesibilitas -->
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/editText_filter_start_date"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="date"
+        android:focusable="false"
+        android:clickable="true"/> <!-- clickable tetap true untuk menangani dari kode -->
+</com.google.android.material.textfield.TextInputLayout>
+
+<com.google.android.material.textfield.TextInputLayout
+android:id="@+id/textFieldLayout_end_date"
+style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:layout_marginTop="12dp"
+android:hint="@string/hint_end_date"
+app:endIconMode="custom"
+    app:endIconDrawable="@drawable/ic_calendar_icon"
+    app:endIconContentDescription="@string/content_desc_select_end_date"> <!-- Deskripsi untuk aksesibilitas -->
+
+<com.google.android.material.textfield.TextInputEditText
+android:id="@+id/editText_filter_end_date"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:inputType="date"
+android:focusable="false"
+android:clickable="true"/> <!-- clickable tetap true untuk menangani dari kode -->
+    </com.google.android.material.textfield.TextInputLayout>
+
+<com.google.android.material.textfield.TextInputLayout
+android:id="@+id/textFieldLayout_name_query"
+style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:layout_marginTop="16dp"
+android:hint="@string/filter_by_report_name_hint">
+
+<com.google.android.material.textfield.TextInputEditText
+    android:id="@+id/editText_filter_name_query"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:inputType="textCapWords"
+    android:maxLines="1"/>
+</com.google.android.material.textfield.TextInputLayout>
+
+    </LinearLayout>

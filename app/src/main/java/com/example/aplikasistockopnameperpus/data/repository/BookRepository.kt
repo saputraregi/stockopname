@@ -11,6 +11,9 @@ import com.example.aplikasistockopnameperpus.data.database.StockOpnameReport
 import com.example.aplikasistockopnameperpus.data.database.StockOpnameReportDao
 import com.example.aplikasistockopnameperpus.model.FilterCriteria // PASTIKAN IMPORT INI ADA
 import com.example.aplikasistockopnameperpus.model.ScanMethod // Jika Anda memiliki fungsi findNewOrUnexpectedItemByIdentifier
+import com.example.aplikasistockopnameperpus.data.model.ReportItemData // Import DTO Anda
+import com.example.aplikasistockopnameperpus.viewmodel.ReportFilterCriteria
+import com.example.aplikasistockopnameperpus.viewmodel.ReportSortOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -24,17 +27,42 @@ class BookRepository(
     // --- BookMaster Operations ---
     fun getAllBookMastersFlow(): Flow<List<BookMaster>> = bookMasterDao.getAllBooksFlow()
 
+    fun getFilteredReportDataWithDetailsFlow(reportId: Long, criteria: FilterCriteria): Flow<List<ReportItemData>> {
+        val statusQueryString: String? = criteria.opnameStatus?.name
+        // Anda bisa menambahkan logika tambahan di sini jika FilterCriteria
+        // memiliki filter yang tidak bisa langsung dipetakan ke parameter query DAO
+
+        return stockOpnameItemDao.getFilteredReportDataWithDetailsFlow( // Panggil fungsi DAO baru
+            reportId = reportId,
+            statusQuery = statusQueryString,
+            titleQuery = criteria.titleQuery,
+            itemCodeQuery = criteria.itemCodeQuery,
+            locationQuery = criteria.locationQuery,
+            epcQuery = criteria.epcQuery,
+            isNewOrUnexpectedFilter = criteria.isNewOrUnexpected,
+            scanStartDateMillis = criteria.scanStartDateMillis,
+            scanEndDateMillis = criteria.scanEndDateMillis
+        )
+    }
+
     suspend fun getAllBookMastersList(): List<BookMaster> {
         return withContext(Dispatchers.IO) {
             bookMasterDao.getAllBooksList()
         }
     }
 
-    // Tambahan: getBookById dari DAO
-    suspend fun getBookById(id: Long): BookMaster? {
+    suspend fun getBooksByIdsList(ids: List<Long>): List<BookMaster> {
+        if (ids.isEmpty()) return emptyList() // Hindari query jika list ID kosong
         return withContext(Dispatchers.IO) {
-            bookMasterDao.getBookById(id)
+            bookMasterDao.getBooksByIdsList(ids) // Fungsi ini perlu ada di BookMasterDao
         }
+    }
+
+    fun getFilteredAndSortedStockOpnameReportsFlow(filter: ReportFilterCriteria?, sort: ReportSortOrder): Flow<List<StockOpnameReport>> {
+        val startDateMillis = filter?.startDate?.time
+        val endDateMillis = filter?.endDate?.time // Ingat, untuk endDate, lebih baik set jam ke 23:59:59 di Activity
+        val nameQuery = filter?.nameQuery?.takeIf { it.isNotBlank() } // Kirim null jika query kosong
+        return stockOpnameReportDao.getFilteredAndSortedReports(startDateMillis, endDateMillis, nameQuery, sort.name)
     }
 
     suspend fun getBookByRfidTag(rfidTag: String): BookMaster? {

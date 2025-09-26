@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <menu xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+        <item
+            android:id="@+id/action_filter_reports"
+            android:title="@string/action_filter_reports"
+            android:icon="@drawable/ic_filter_list_report"
+            app:showAsAction="ifRoom" />
+
+        <item
+            android:id="@+id/action_sort_reports"
+            android:title="@string/action_sort_reports"
+            android:icon="@drawable/ic_sort"
+            app:showAsAction="ifRoom">
+        <!-- Submenu untuk pilihan Urut -->
+        <menu>
+            <group android:id="@+id/group_sort_order" android:checkableBehavior="single">
+                <item
+                    android:id="@+id/action_sort_date_desc"
+                    android:title="@string/sort_date_desc" />
+                <item
+                    android:id="@+id/action_sort_date_asc"
+                    android:title="@string/sort_date_asc" />
+                <item
+                    android:id="@+id/action_sort_name_asc"
+                    android:title="@string/sort_name_asc" />
+                <item
+                    android:id="@+id/action_sort_name_desc"
+                    android:title="@string/sort_name_desc" />
+            </group>
+        </menu>
+    </item>
+
+    <item
+        android:id="@+id/action_clear_filters_sort"
+        android:title="@string/action_clear_filters_sort"
+        app:showAsAction="never" />
+</menu>

@@ -68,18 +68,19 @@
         android:enabled="true"/> <!-- Activity akan mengontrol enable/disable -->
 
 
-    <TextView
-        android:id="@+id/textViewRadarStatus"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:gravity="center"
-        android:text="@string/status_radar_idle"
-        android:textAppearance="?attr/textAppearanceBody2"
-        app:layout_constraintTop_toBottomOf="@+id/textFieldLayout_epc_target_radar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:text="Mencari EPC: E200341201..."/>
+        <TextView
+            android:id="@+id/textViewRadarStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="@string/status_radar_idle"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:textColor="@color/default_text_color"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textFieldLayout_epc_target_radar"
+            tools:text="Mencari EPC: E200341201..." />
 
     <com.example.aplikasistockopnameperpus.view.RadarView
         android:id="@+id/radarView"
@@ -101,26 +102,28 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.68" /> <!-- Sedikit disesuaikan agar ada ruang lebih -->
 
-    <TextView
-        android:id="@+id/labelSearchRange"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/label_search_range_radar"
-        app:layout_constraintTop_toBottomOf="@id/guidelineHorizontalControls"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"/>
+        <TextView
+            android:id="@+id/labelSearchRange"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/label_search_range_radar"
+            android:textColor="@color/default_text_color"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/guidelineHorizontalControls" />
 
-    <TextView
-        android:id="@+id/textViewRangeMin"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/text_range_min_radar"
-        android:textSize="14sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="@id/seekBar_search_range_radar"
-        app:layout_constraintTop_toTopOf="@id/seekBar_search_range_radar"
-        android:layout_marginStart="8dp"/>
+        <TextView
+            android:id="@+id/textViewRangeMin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/text_range_min_radar"
+            android:textColor="@color/default_text_color"
+            android:textSize="14sp"
+            app:layout_constraintBottom_toBottomOf="@id/seekBar_search_range_radar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/seekBar_search_range_radar" />
 
     <SeekBar
         android:id="@+id/seekBar_search_range_radar"
@@ -140,16 +143,17 @@
     <!-- android:thumb="@drawable/shape_seekbar_circle" -->
 
 
-    <TextView
-        android:id="@+id/textViewRangeMax"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/text_range_max_radar"
-        android:textSize="14sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="@id/seekBar_search_range_radar"
-        app:layout_constraintTop_toTopOf="@id/seekBar_search_range_radar"
-        android:layout_marginEnd="8dp"/>
+        <TextView
+            android:id="@+id/textViewRangeMax"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="@string/text_range_max_radar"
+            android:textColor="@color/default_text_color"
+            android:textSize="14sp"
+            app:layout_constraintBottom_toBottomOf="@id/seekBar_search_range_radar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/seekBar_search_range_radar" />
 
     <LinearLayout
         android:id="@+id/layoutButtonsRadar"

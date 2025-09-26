@@ -20,6 +20,9 @@ class FilterActivity : AppCompatActivity() {
         const val REQUEST_CODE_FILTER = 101
         const val EXTRA_CURRENT_FILTER_CRITERIA = "current_filter_criteria"
         const val EXTRA_RESULT_FILTER_CRITERIA = "result_filter_criteria"
+        const val EXTRA_CONTEXT_USAGE = "extra_context_usage"
+        const val CONTEXT_STOCK_OPNAME = "context_stock_opname"
+        const val CONTEXT_REPORT_DETAIL = "context_report_detail"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +54,8 @@ class FilterActivity : AppCompatActivity() {
         // Status Opname
         when (criteria.opnameStatus) {
             OpnameStatus.FOUND -> binding.radioGroupOpnameStatus.check(R.id.radioButtonStatusFound)
-            OpnameStatus.NOT_SCANNED, OpnameStatus.MISSING -> binding.radioGroupOpnameStatus.check(R.id.radioButtonStatusNotFound) // Gabungkan
+            OpnameStatus.MISSING -> binding.radioGroupOpnameStatus.check(R.id.radioButtonStatusMissing)
+            OpnameStatus.NOT_SCANNED -> binding.radioGroupOpnameStatus.check(R.id.radioButtonStatusNotScanned) // Gabungkan
             OpnameStatus.NEW_ITEM -> binding.radioGroupOpnameStatus.check(R.id.radioButtonStatusNew)
             null -> binding.radioGroupOpnameStatus.check(R.id.radioButtonStatusAll) // Default atau semua
         }
@@ -78,7 +82,8 @@ class FilterActivity : AppCompatActivity() {
 
         val opnameStatusFilter: OpnameStatus? = when (selectedRadioButton.id) {
             R.id.radioButtonStatusFound -> OpnameStatus.FOUND
-            R.id.radioButtonStatusNotFound -> OpnameStatus.NOT_SCANNED // Atau MISSING, tergantung bagaimana Anda ingin memfilternya di DAO
+            R.id.radioButtonStatusMissing -> OpnameStatus.MISSING // Atau MISSING, tergantung bagaimana Anda ingin memfilternya di DAO
+            R.id.radioButtonStatusNotScanned -> OpnameStatus.NOT_SCANNED
             R.id.radioButtonStatusNew -> OpnameStatus.NEW_ITEM
             else -> null // radioButtonStatusAll atau default
         }

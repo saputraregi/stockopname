@@ -32,22 +32,22 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceHeadline6"
-            tools:text="Sesi: Opname_20240115_103000"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
+            android:textColor="@color/default_text_color"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginBottom="4dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Sesi: Opname_20240115_103000" />
 
         <TextView
             android:id="@+id/textViewReportStatsHeader"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceBody2"
-            tools:text="Expected: 100, Found: 80, Missing: 15, New: 5"
-            app:layout_constraintTop_toBottomOf="@id/textViewReportNameHeader"
-            app:layout_constraintStart_toStartOf="parent"
+            android:textColor="@color/default_text_color"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginBottom="16dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textViewReportNameHeader"
+            tools:text="Expected: 100, Found: 80, Missing: 15, New: 5" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonShowFilterPageReportDetail"

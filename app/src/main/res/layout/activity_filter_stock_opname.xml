@@ -65,10 +65,16 @@
                     android:text="@string/filter_status_found"/> <!-- Tambahkan string ini -->
 
                 <RadioButton
-                    android:id="@+id/radioButtonStatusNotFound"
+                    android:id="@+id/radioButtonStatusNotScanned"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/filter_status_not_found_or_missing"/> <!-- Tambahkan string ini -->
+                    android:text="@string/filter_status_not_scanned"/>
+
+                <RadioButton
+                    android:id="@+id/radioButtonStatusMissing"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_status_missing"/><!-- Tambahkan string ini -->
 
                 <RadioButton
                     android:id="@+id/radioButtonStatusNew"

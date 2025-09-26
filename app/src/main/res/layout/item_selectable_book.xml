@@ -12,6 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceListItem"
+        android:textColor="@color/default_text_color"
         tools:text="Judul Buku yang Sangat Panjang Sekali" />
 
     <TextView
@@ -19,6 +20,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceListItemSecondary"
+        android:textColor="@color/default_text_color"
         tools:text="Kode: B00001XYZ" />
 
     <TextView
@@ -26,7 +28,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceCaption"
-        tools:text="EPC: E2001234567890ABCDEF1234"
-        android:textColor="?attr/colorPrimary"
-        android:textStyle="italic"/>
+        android:textColor="@color/default_text_color"
+        android:textStyle="italic"
+        tools:text="EPC: E2001234567890ABCDEF1234" />
 </LinearLayout>

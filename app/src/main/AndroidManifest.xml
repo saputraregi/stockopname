@@ -113,11 +113,27 @@
             android:exported="false">
         </activity>
 
+        <activity
+            android:name=".BookListDetailActivity"
+            android:exported="false"
+            android:parentActivityName=".StockOpnameActivity"> <!-- Opsional, untuk tombol up navigasi -->
+        </activity>
+
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge"
             tools:replace="android:foregroundServiceType"/>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

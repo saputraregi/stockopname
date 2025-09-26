@@ -68,23 +68,25 @@
                 android:id="@+id/text_view_session_name_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
                 android:text="@string/label_session_name"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
-                app:layout_constraintTop_toBottomOf="@id/layout_action_buttons"
+                android:textColor="@color/default_text_color"
                 app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginTop="16dp"/>
+                app:layout_constraintTop_toBottomOf="@id/layout_action_buttons" />
 
             <TextView
                 android:id="@+id/text_view_session_name_value"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                tools:text="Opname_20240115_103000"
+                android:layout_marginTop="4dp"
                 android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="@color/default_text_color"
                 android:textStyle="bold"
-                app:layout_constraintTop_toBottomOf="@id/text_view_session_name_label"
-                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginTop="4dp"/>
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/text_view_session_name_label"
+                tools:text="Opname_20240115_103000" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/text_input_layout_edit_session_name"
@@ -130,14 +132,15 @@
                 android:id="@+id/label_scan_mode_uhf"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginEnd="8dp"
                 android:text="UHF"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
-                app:layout_constraintTop_toBottomOf="@id/text_input_layout_edit_session_name"
+                android:textColor="@color/default_text_color"
                 app:layout_constraintEnd_toStartOf="@+id/switchScanModeInternal"
                 app:layout_constraintHorizontal_chainStyle="packed"
                 app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginTop="24dp"
-                android:layout_marginEnd="8dp"/>
+                app:layout_constraintTop_toBottomOf="@id/text_input_layout_edit_session_name" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switchScanModeInternal"
@@ -154,13 +157,14 @@
                 android:id="@+id/label_scan_mode_barcode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
                 android:text="Barcode"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
-                app:layout_constraintTop_toTopOf="@id/switchScanModeInternal"
+                android:textColor="@color/default_text_color"
                 app:layout_constraintBottom_toBottomOf="@id/switchScanModeInternal"
-                app:layout_constraintStart_toEndOf="@id/switchScanModeInternal"
                 app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginStart="8dp"/>
+                app:layout_constraintStart_toEndOf="@id/switchScanModeInternal"
+                app:layout_constraintTop_toTopOf="@id/switchScanModeInternal" />
 
             <!-- Kontrol Scan -->
             <LinearLayout
@@ -214,10 +218,11 @@
                 android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
-                tools:text="Last scan: ABC12345 (FOUND)"
-                app:layout_constraintTop_toBottomOf="@id/progress_bar_opname"
+                android:textColor="@color/default_text_color"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintTop_toBottomOf="@id/progress_bar_opname"
+                tools:text="Last scan: ABC12345 (FOUND)" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_statistics"
@@ -237,16 +242,59 @@
                     android:rowCount="3"
                     android:padding="16dp">
 
-                    <TextView android:text="@string/stat_total_master" android:textAppearance="?attr/textAppearanceBodyMedium" android:layout_marginEnd="16dp" android:layout_marginBottom="8dp"/>
-                    <TextView android:id="@+id/text_view_total_books_value" tools:text="1000" android:textAppearance="?attr/textAppearanceBodyMedium" android:textStyle="bold" android:layout_gravity="end" android:layout_marginBottom="8dp"/>
+                    <TextView
+                        android:layout_marginEnd="16dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/stat_total_master"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color" />
 
-                    <TextView android:text="@string/stat_found" android:textAppearance="?attr/textAppearanceBodyMedium" android:layout_marginEnd="16dp" android:layout_marginBottom="8dp"/>
-                    <TextView android:id="@+id/text_view_found_books_value" tools:text="750" android:textAppearance="?attr/textAppearanceBodyMedium" android:textStyle="bold" android:layout_gravity="end" android:layout_marginBottom="8dp"/>
+                    <TextView
+                        android:id="@+id/text_view_total_books_value"
+                        android:layout_gravity="end"
+                        android:layout_marginBottom="8dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color"
+                        android:textStyle="bold"
+                        tools:text="1000" />
 
-                    <TextView android:text="@string/stat_missing" android:textAppearance="?attr/textAppearanceBodyMedium" android:layout_marginEnd="16dp" android:layout_marginBottom="8dp"/>
-                    <TextView android:id="@+id/text_view_missing_books_value" tools:text="200" android:textAppearance="?attr/textAppearanceBodyMedium" android:textStyle="bold" android:layout_gravity="end" android:layout_marginBottom="8dp"/>
+                    <TextView
+                        android:layout_marginEnd="16dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/stat_found"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color" />
 
-                    <TextView android:text="@string/stat_new_unexpected" android:textAppearance="?attr/textAppearanceBodyMedium" android:layout_marginEnd="16dp"/>
+                    <TextView
+                        android:id="@+id/text_view_found_books_value"
+                        android:layout_gravity="end"
+                        android:layout_marginBottom="8dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color"
+                        android:textStyle="bold"
+                        tools:text="750" />
+
+                    <TextView
+                        android:layout_marginEnd="16dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/stat_missing"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color" />
+
+                    <TextView
+                        android:id="@+id/text_view_missing_books_value"
+                        android:layout_gravity="end"
+                        android:layout_marginBottom="8dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color"
+                        android:textStyle="bold"
+                        tools:text="200" />
+
+                    <TextView
+                        android:layout_marginEnd="16dp"
+                        android:text="@string/stat_new_unexpected"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/default_text_color" />
                     <TextView android:id="@+id/text_view_new_or_unexpected_books_value" tools:text="10" android:textAppearance="?attr/textAppearanceBodyMedium" android:textStyle="bold" android:layout_gravity="end"/>
                 </GridLayout>
             </com.google.android.material.card.MaterialCardView>

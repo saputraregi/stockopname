@@ -39,6 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Impor Data Master Buku"
+            android:textColor="@color/md_theme_inverseSurface"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
@@ -62,6 +63,7 @@
             android:layout_marginTop="8dp"
             android:text="Tidak ada file dipilih"
             android:textAppearance="?attr/textAppearanceBody2"
+            android:textColor="@color/black"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/buttonSelectFileImportMaster" />
@@ -101,11 +103,12 @@
             android:gravity="center_horizontal"
             android:text="Status: Siap"
             android:textAppearance="?attr/textAppearanceCaption"
+            android:textColor="@color/black"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/progressBarImportMaster"
             tools:text="Status: Memproses baris 123 dari 200..."
-            tools:visibility="visible"/>
+            tools:visibility="visible" />
 
 
         <View
@@ -124,6 +127,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:text="Ekspor Data"
+            android:textColor="@color/black"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"

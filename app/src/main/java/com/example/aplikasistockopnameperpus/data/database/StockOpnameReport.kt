@@ -15,5 +15,6 @@ data class StockOpnameReport(
     var totalItemsMissing: Int = 0,
     var totalItemsNewOrUnexpected: Int = 0, // Untuk tag yang tidak ada di master
     var totalItemsMisplaced: Int = 0,
-    var userId: String? = null
+    var userId: String? = null,
+    var reportDate: Long = System.currentTimeMillis()
 )

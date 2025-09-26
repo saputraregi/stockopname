@@ -271,6 +271,58 @@ class StockOpnameActivity : AppCompatActivity() {
         }
         Log.d("StockOpnameActivity", "setupButtonListeners: Listeners set.")
 
+        binding.gridLayoutStatistics.setOnClickListener {
+            navigateToBookListDetail(getString(R.string.title_all_books), stockViewModel.currentFilterCriteria.value)
+        }
+
+        binding.textViewFoundBooksValue.setOnClickListener {
+            val foundFilter = FilterCriteria(opnameStatus = OpnameStatus.FOUND)
+            // Anda mungkin ingin menggabungkan dengan filter yang sudah aktif:
+            val currentGlobalFilter = stockViewModel.currentFilterCriteria.value
+            val combinedFilter = foundFilter.copy( // Salin filter global
+                titleQuery = currentGlobalFilter.titleQuery,
+                itemCodeQuery = currentGlobalFilter.itemCodeQuery,
+                locationQuery = currentGlobalFilter.locationQuery,
+                epcQuery = currentGlobalFilter.epcQuery
+                // Jangan override isNewOrUnexpected kecuali memang diinginkan
+            )
+            navigateToBookListDetail(getString(R.string.stat_found), combinedFilter)
+        }
+
+        binding.textViewMissingBooksValue.setOnClickListener {
+            val missingFilter = FilterCriteria(opnameStatus = OpnameStatus.MISSING)
+            val currentGlobalFilter = stockViewModel.currentFilterCriteria.value
+            val combinedFilter = missingFilter.copy(
+                titleQuery = currentGlobalFilter.titleQuery,
+                itemCodeQuery = currentGlobalFilter.itemCodeQuery,
+                locationQuery = currentGlobalFilter.locationQuery,
+                epcQuery = currentGlobalFilter.epcQuery
+            )
+            navigateToBookListDetail(getString(R.string.stat_missing), combinedFilter)
+        }
+
+        binding.textViewNewOrUnexpectedBooksValue.setOnClickListener {
+            val newFilter = FilterCriteria(isNewOrUnexpected = true) // Ini mungkin perlu disesuaikan dengan bagaimana Anda menandai buku baru/tak terduga
+            val currentGlobalFilter = stockViewModel.currentFilterCriteria.value
+            val combinedFilter = newFilter.copy(
+                titleQuery = currentGlobalFilter.titleQuery,
+                itemCodeQuery = currentGlobalFilter.itemCodeQuery,
+                locationQuery = currentGlobalFilter.locationQuery,
+                epcQuery = currentGlobalFilter.epcQuery
+            )
+            // Jika ingin semua yang 'isNewOrUnexpected' tanpa peduli status opname lain:
+            // val specificNewFilter = FilterCriteria(isNewOrUnexpected = true)
+            navigateToBookListDetail(getString(R.string.stat_new_unexpected), combinedFilter)
+        }
+
+        binding.textViewTotalBooksValue.setOnClickListener {
+            val totalMasterFilter = stockViewModel.currentFilterCriteria.value.copy(
+                opnameStatus = null, // Tampilkan semua status opname
+                isNewOrUnexpected = null // Tampilkan yang diharapkan dan tidak diharapkan
+            )
+            navigateToBookListDetail(getString(R.string.stat_total_master), totalMasterFilter)
+        }
+
 
         binding.buttonStartUhfScan.setOnClickListener {
             Log.d("StockOpnameActivity", "UHF Scan button clicked.")
@@ -305,6 +357,14 @@ class StockOpnameActivity : AppCompatActivity() {
             }
         }
         Log.d("StockOpnameActivity", "setupButtonListeners: Listeners set.")
+    }
+
+    private fun navigateToBookListDetail(title: String, filterCriteria: FilterCriteria) {
+        val intent = Intent(this, BookListDetailActivity::class.java).apply {
+            putExtra(BookListDetailActivity.EXTRA_FILTER_CRITERIA, filterCriteria)
+            putExtra(BookListDetailActivity.EXTRA_TITLE, title)
+        }
+        startActivity(intent)
     }
 
     private fun openFilterPage() {

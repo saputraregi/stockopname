@@ -1,6 +1,8 @@
 package com.example.aplikasistockopnameperpus.data.database
 
 import androidx.room.*
+import com.example.aplikasistockopnameperpus.data.model.ReportItemData
+import com.example.aplikasistockopnameperpus.model.FilterCriteria
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -16,7 +18,7 @@ interface BookMasterDao {
             (:locationQuery IS NULL OR locationName LIKE '%' || :locationQuery || '%') AND
             (:epcQuery IS NULL OR rfidTagHex LIKE '%' || :epcQuery || '%') AND
             (:isNewOrUnexpectedFilter IS NULL OR isNewOrUnexpected = :isNewOrUnexpectedFilter)
-        ORDER BY title ASC
+        ORDER BY itemCode ASC
     """)
     fun getFilteredBooks(
         statusFilter: OpnameStatus?,
@@ -30,6 +32,9 @@ interface BookMasterDao {
     // Fungsi untuk mendapatkan total buku di master (tidak termasuk yang baru/tak terduga secara default)
     @Query("SELECT COUNT(*) FROM book_master WHERE isNewOrUnexpected = 0") // Asumsi item 'normal' punya isNewOrUnexpected = 0 atau false
     suspend fun getTotalBookCount(): Int
+
+    @Query("SELECT * FROM book_master WHERE id IN (:ids)")
+    suspend fun getBooksByIdsList(ids: List<Long>): List<BookMaster>
 
     // Fungsi untuk mencari item baru/tak terduga berdasarkan EPC
     @Query("SELECT * FROM book_master WHERE rfidTagHex = :epc AND isNewOrUnexpected = 1 LIMIT 1")
@@ -121,4 +126,5 @@ interface BookMasterDao {
 
     @Delete
     suspend fun deleteBook(book: BookMaster): Int
+
 }

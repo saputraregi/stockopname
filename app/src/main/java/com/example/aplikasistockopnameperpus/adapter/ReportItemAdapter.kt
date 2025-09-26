@@ -1,18 +1,20 @@
 package com.example.aplikasistockopnameperpus.adapter
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.semantics.text
-import androidx.core.content.ContextCompat
+import androidx.glance.visibility
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.aplikasistockopnameperpus.R // Pastikan import R benar
-import com.example.aplikasistockopnameperpus.data.database.StockOpnameItem
+import com.example.aplikasistockopnameperpus.R
 import com.example.aplikasistockopnameperpus.databinding.ItemReportDetailRowBinding
+import com.example.aplikasistockopnameperpus.viewmodel.BookMasterDisplayWrapper // Pastikan path ini benar
 
-class ReportItemAdapter(private val onItemClick: (StockOpnameItem) -> Unit) :
-    ListAdapter<StockOpnameItem, ReportItemAdapter.ReportItemViewHolder>(DiffCallback) {
+class ReportItemAdapter(
+    private val onItemClick: (BookMasterDisplayWrapper) -> Unit
+) : ListAdapter<BookMasterDisplayWrapper, ReportItemAdapter.ReportItemViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ReportItemViewHolder {
         val binding = ItemReportDetailRowBinding.inflate(
@@ -24,49 +26,64 @@ class ReportItemAdapter(private val onItemClick: (StockOpnameItem) -> Unit) :
     }
 
     override fun onBindViewHolder(holder: ReportItemViewHolder, position: Int) {
-        val currentItem = getItem(position)
-        holder.bind(currentItem)
+        val currentWrapper = getItem(position)
+        holder.bind(currentWrapper)
     }
 
     class ReportItemViewHolder(
         private val binding: ItemReportDetailRowBinding,
-        private val onItemClick: (StockOpnameItem) -> Unit
-    ) :
-        RecyclerView.ViewHolder(binding.root) {
+        private val onItemClickCallback: (BookMasterDisplayWrapper) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(item: StockOpnameItem) {
-            binding.textViewItemTitle.text = item.titleMaster ?: itemView.context.getString(R.string.title_not_available)
-            binding.textViewItemCode.text = itemView.context.getString(R.string.prefix_item_code, item.itemCodeMaster ?: "-")
-            binding.textViewItemEpc.text = itemView.context.getString(R.string.prefix_epc, item.rfidTagHexScanned ?: "-")
-            binding.textViewItemStatus.text = itemView.context.getString(R.string.prefix_status, item.status)
+        fun bind(wrapper: BookMasterDisplayWrapper) {
+            val context = itemView.context
+            val book = wrapper.bookMaster // Akses BookMaster dari wrapper
 
-            binding.textViewItemActualLocation.text = itemView.context.getString(R.string.prefix_actual_location, item.actualLocationIfDifferent ?: "-")
+            binding.textViewItemTitle.text = book.title ?: context.getString(R.string.title_not_available)
+            binding.textViewItemCode.text = context.getString(R.string.prefix_item_code, book.itemCode ?: "-")
+            binding.textViewItemEpc.text = context.getString(R.string.prefix_epc, book.rfidTagHex ?: context.getString(R.string.epc_not_available_short))
 
-            // Contoh pewarnaan berdasarkan status (opsional)
-            val statusColor = when (item.status?.uppercase()) {
-                "FOUND" -> R.color.opname_status_found_correct_color // Ganti dengan warna Anda
-                "MISSING" -> R.color.opname_status_missing_color
-                "NEW_ITEM", "UNKNOWN_ITEM_IN_REPORT_STATUS" -> R.color.opname_status_new_item_color
-                else -> android.R.color.darker_gray
+            // Status Opname (dari DisplayWrapper yang sudah diproses)
+            binding.textViewItemOpnameStatus.text = context.getString(R.string.prefix_status_opname, wrapper.displayOpnameStatusText)
+            binding.textViewItemOpnameStatus.setTextColor(wrapper.displayOpnameStatusColor)
+
+            // Status Pairing (dari DisplayWrapper yang sudah diproses)
+            binding.textViewItemPairingStatus.text = context.getString(R.string.prefix_status_pairing, wrapper.displayPairingStatusText)
+            binding.textViewItemPairingStatus.setTextColor(wrapper.displayPairingStatusColor)
+
+            // Lokasi
+            binding.textViewItemExpectedLocation.text = context.getString(R.string.prefix_expected_location, wrapper.displayExpectedLocation)
+
+            // Lokasi aktual scan diambil dari BookMaster (yang mungkin diisi dari StockOpnameItem di ViewModel)
+            val actualLocationText = book.actualScannedLocation?.takeIf { it.isNotBlank() }
+                ?: context.getString(R.string.location_scan_not_recorded)
+            binding.textViewItemActualLocation.text = context.getString(R.string.prefix_actual_location, actualLocationText)
+
+            // Last Seen Info (dari DisplayWrapper yang sudah diproses)
+            if (!wrapper.displayLastSeenInfo.isNullOrBlank()) {
+                binding.textViewLastSeenInfo.text = context.getString(R.string.prefix_last_seen, wrapper.displayLastSeenInfo)
+                binding.textViewLastSeenInfo.visibility = View.VISIBLE
+            } else {
+                binding.textViewLastSeenInfo.visibility = View.GONE
             }
-            binding.textViewItemStatus.setTextColor(ContextCompat.getColor(itemView.context, statusColor))
 
             itemView.setOnClickListener {
-                onItemClick(item)
+                onItemClickCallback(wrapper)
             }
         }
     }
 
-    companion object DiffCallback : DiffUtil.ItemCallback<StockOpnameItem>() {
-        override fun areItemsTheSame(oldItem: StockOpnameItem, newItem: StockOpnameItem): Boolean {
-            // Bandingkan berdasarkan composite primary key Anda
-            return oldItem.reportId == newItem.reportId &&
-                    oldItem.rfidTagHexScanned == newItem.rfidTagHexScanned
+    companion object DiffCallback : DiffUtil.ItemCallback<BookMasterDisplayWrapper>() {
+        override fun areItemsTheSame(oldWrapper: BookMasterDisplayWrapper, newWrapper: BookMasterDisplayWrapper): Boolean {
+            // Identifier unik BookMaster. Jika bisa 0 untuk item baru, itemCode bisa jadi fallback.
+            return oldWrapper.bookMaster.id == newWrapper.bookMaster.id &&
+                    (oldWrapper.bookMaster.id != 0L || // Jika bukan ID default (0L)
+                            oldWrapper.bookMaster.itemCode == newWrapper.bookMaster.itemCode) // Maka bandingkan itemCode
         }
 
-        override fun areContentsTheSame(oldItem: StockOpnameItem, newItem: StockOpnameItem): Boolean {
-            // Karena StockOpnameItem adalah data class, perbandingan ini akan memeriksa semua field.
-            return oldItem == newItem
+        override fun areContentsTheSame(oldWrapper: BookMasterDisplayWrapper, newWrapper: BookMasterDisplayWrapper): Boolean {
+            return oldWrapper == newWrapper // Data class comparison
         }
     }
 }
+

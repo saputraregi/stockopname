@@ -14,9 +14,10 @@
         android:layout_height="wrap_content"
         android:text="@string/read_instruction"
         android:textAppearance="?attr/textAppearanceListItem"
-        app:layout_constraintTop_toTopOf="parent"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
     <RadioGroup
         android:id="@+id/radioGroupReadMode"
@@ -32,15 +33,17 @@
             android:id="@+id/radioButtonSingleRead"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/read_mode_single"/>
+            android:text="@string/read_mode_single"
+            android:textColor="@color/default_text_color" />
 
         <RadioButton
             android:id="@+id/radioButtonContinuousRead"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/read_mode_continuous"
+            android:layout_marginStart="16dp"
             android:checked="true"
-            android:layout_marginStart="16dp"/>
+            android:text="@string/read_mode_continuous"
+            android:textColor="@color/default_text_color" />
     </RadioGroup>
 
     <Button
@@ -91,54 +94,59 @@
         android:id="@+id/textViewStatusLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Status:"
         android:layout_marginTop="24dp"
-        app:layout_constraintTop_toBottomOf="@id/buttonStartRead"
-        app:layout_constraintStart_toStartOf="parent"/>
+        android:text="Status:"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/buttonStartRead" />
 
     <TextView
         android:id="@+id/textViewStatus"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        tools:text="Idle"
-        android:textAppearance="?attr/textAppearanceBody1"
         android:layout_marginStart="8dp"
-        app:layout_constraintTop_toTopOf="@id/textViewStatusLabel"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:textColor="@color/default_text_color"
         app:layout_constraintBottom_toBottomOf="@id/textViewStatusLabel"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/textViewStatusLabel"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toTopOf="@id/textViewStatusLabel"
+        tools:text="Idle" />
 
 
     <TextView
         android:id="@+id/textViewLastEpcLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/last_epc_label"
         android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/textViewStatusLabel"
-        app:layout_constraintStart_toStartOf="parent"/>
+        android:text="@string/last_epc_label"
+        android:textColor="@color/default_text_color"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewStatusLabel" />
 
     <TextView
         android:id="@+id/textViewLastEpcValue"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        tools:text="E2003412013101071234ABCD"
-        android:textAppearance="?attr/textAppearanceHeadline6"
-        android:textIsSelectable="true"
         android:layout_marginTop="4dp"
-        app:layout_constraintTop_toBottomOf="@id/textViewLastEpcLabel"
+        android:textAppearance="?attr/textAppearanceHeadline6"
+        android:textColor="@color/default_text_color"
+        android:textIsSelectable="true"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/textViewLastEpcLabel"
+        tools:text="E2003412013101071234ABCD" />
 
     <TextView
         android:id="@+id/textViewListOfEpcsLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/list_of_epcs_label"
         android:layout_marginTop="16dp"
+        android:text="@string/list_of_epcs_label"
+        android:textColor="@color/default_text_color"
         android:visibility="visible"
-        app:layout_constraintTop_toBottomOf="@id/textViewLastEpcValue"
-        app:layout_constraintStart_toStartOf="parent"/>
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewLastEpcValue" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewReadEpcs"
