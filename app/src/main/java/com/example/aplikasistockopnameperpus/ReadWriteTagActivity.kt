@@ -22,7 +22,7 @@ class ReadWriteTagActivity : AppCompatActivity() {
     private lateinit var binding: ActivityReadWriteTagBinding
     private val viewModel: ReadWriteTagViewModel by viewModels() // ViewModel sudah benar
 
-    private val TRIGGER_KEY_MAIN = 239
+    private val TRIGGER_KEY_MAIN = 293
     private val TRIGGER_KEY_BACKUP = 139
 
     private val tabTitles by lazy {

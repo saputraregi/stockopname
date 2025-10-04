@@ -26,6 +26,7 @@ import com.example.aplikasistockopnameperpus.databinding.ActivityReportBinding
 import com.example.aplikasistockopnameperpus.viewmodel.ReportFilterCriteria
 import com.example.aplikasistockopnameperpus.viewmodel.ReportSortOrder
 import com.example.aplikasistockopnameperpus.viewmodel.ReportViewModel
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.flow.collect // Bisa digunakan jika Anda ingin lebih eksplisit atau untuk koleksi lain
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -291,7 +292,7 @@ class ReportActivity : AppCompatActivity() {
         setupDatePicker(editTextStartDate, false)
         setupDatePicker(editTextEndDate, true)
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.dialog_title_filter_reports))
             .setView(dialogView)
             .setPositiveButton(getString(R.string.apply)) { _, _ ->

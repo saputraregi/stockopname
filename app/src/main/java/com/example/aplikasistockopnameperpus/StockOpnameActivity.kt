@@ -37,7 +37,7 @@ class StockOpnameActivity : AppCompatActivity() {
     private lateinit var bookListAdapter: BookListAdapter
 
     // --- AWAL PENAMBAHAN UNTUK TOMBOL FISIK & MODE SCAN ---
-    private val TRIGGER_KEY_MAIN = 239
+    private val TRIGGER_KEY_MAIN = 293
     private val TRIGGER_KEY_BACKUP = 139
 
     private enum class ScanMode { UHF, BARCODE }

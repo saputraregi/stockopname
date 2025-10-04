@@ -1,17 +1,18 @@
 package com.example.aplikasistockopnameperpus.view
 
 import android.content.Context
-import android.graphics.drawable.Drawable
+import android.graphics.drawable.Drawable // Jika Anda menggunakan atribut centerImage
 import android.util.AttributeSet
+import android.util.Log // Tambahkan Log jika belum ada
 import android.widget.FrameLayout
 import android.widget.ImageView
-import com.example.aplikasistockopnameperpus.R
-// PASTIKAN IMPORT INI BENAR
-import com.example.aplikasistockopnameperpus.MyApplication // Jika MyRadarLocationEntity ada di root package
-import com.example.aplikasistockopnameperpus.viewmodel.MyRadarLocationEntity
+import com.example.aplikasistockopnameperpus.R // Pastikan R.styleable.RadarView ada jika Anda menggunakannya
+import com.example.aplikasistockopnameperpus.model.RadarUiTag
+// Import untuk List<com.rscja.deviceapi.entity.RadarLocationEntity> sudah benar di fungsi bindingData
 
-// ATAU
-// import com.example.aplikasistockopnameperpus.viewmodel.MyRadarLocationEntity // Jika ada di package viewmodel
+// Komentar tentang MyRadarLocationEntity mungkin tidak relevan jika Anda langsung menggunakan entitas SDK
+// import com.example.aplikasistockopnameperpus.MyApplication
+// import com.example.aplikasistockopnameperpus.viewmodel.MyRadarLocationEntity
 
 class RadarView @JvmOverloads constructor(
     context: Context,
@@ -21,32 +22,27 @@ class RadarView @JvmOverloads constructor(
 
     private var radarBackgroundView: RadarBackgroundView
     private var radarPanelView: RadarPanelView
-    private var centerImageView: ImageView // Opsional, jika Anda punya gambar di tengah
-
-    // private var centerImageDrawable: Drawable? = null // Jika mengambil dari atribut
+    private var centerImageView: ImageView // Opsional
 
     init {
-        // Inflate layout internal RadarView jika Anda menggunakan XML terpisah untuk strukturnya
-        // atau tambahkan view secara programatik.
-        // Untuk contoh ini, kita tambahkan secara programatik.
-
         radarBackgroundView = RadarBackgroundView(context, attrs)
         addView(radarBackgroundView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         radarPanelView = RadarPanelView(context, attrs)
         addView(radarPanelView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
+        // Inisialisasi centerImageView tetap sama
         centerImageView = ImageView(context)
-        // Atur gambar default atau dari atribut
-        // centerImageView.setImageResource(R.drawable.ic_radar_center_default) // Ganti dengan drawable Anda
-        val centerImageSize = (100 * resources.displayMetrics.density).toInt() // Contoh ukuran 100dp
+        // Contoh: centerImageView.setImageResource(R.drawable.ic_radar_center_default)
+        val centerImageSize = (60 * resources.displayMetrics.density).toInt() // Ukuran contoh untuk gambar tengah
         val centerParams = LayoutParams(centerImageSize, centerImageSize)
         centerParams.gravity = android.view.Gravity.CENTER
-        // addView(centerImageView, centerParams) // Uncomment jika Anda ingin gambar tengah
+        // addView(centerImageView, centerParams) // Uncomment jika Anda ingin menambahkan gambar di tengah
 
-        // Ambil atribut kustom jika ada (misal centerImage dari attrs)
+        // Pengambilan atribut kustom tetap sama
         attrs?.let {
             val typedArray = context.obtainStyledAttributes(it, R.styleable.RadarView, 0, 0)
+            // Contoh jika Anda punya atribut 'centerImage' di styleable RadarView
             val centerDrawable = typedArray.getDrawable(R.styleable.RadarView_centerImage)
             if (centerDrawable != null) {
                 // centerImageView.setImageDrawable(centerDrawable)
@@ -57,48 +53,52 @@ class RadarView @JvmOverloads constructor(
 
     /**
      * Mengikat data tag yang terdeteksi ke RadarPanelView.
-     * PASTIKAN TIPE PARAMETER tags BENAR DI SINI.
+     * Sudut tidak lagi diproses di sini karena rotasi ditangani oleh FrameLayout ini.
      */
-    fun bindingData(tags: List<com.rscja.deviceapi.entity.RadarLocationEntity>, targetEpc: String?) {
-        // radarPanelView juga perlu diubah untuk menerima tipe SDK
+    fun bindingData(tags: List<RadarUiTag>, targetEpc: String?) {
         radarPanelView.setTags(tags, targetEpc)
     }
 
     /**
      * Memulai animasi sapuan radar di background.
+     * Nama diubah agar lebih jelas ini untuk animasi latar.
      */
-    fun startRadar() {
+    fun startRadarAnimation() {
         radarBackgroundView.start()
     }
 
     /**
-     * Menghentikan animasi sapuan radar.
+     * Menghentikan animasi sapuan radar di background.
+     * Nama diubah agar lebih jelas ini untuk animasi latar.
      */
-    fun stopRadar() {
+    fun stopRadarAnimation() {
         radarBackgroundView.stop()
-        radarPanelView.clear() // Bersihkan juga titik-titik tag
+        // Anda mungkin ingin memanggil clearPanel() dari Activity/ViewModel
+        // setelah radar dihentikan, bukan secara otomatis di sini.
+        // radarPanelView.clear()
     }
 
     /**
-     * (Opsional) Mengatur rotasi untuk seluruh RadarView.
-     * Ini bisa digunakan untuk mensimulasikan rotasi antena.
-     * Sudut biasanya dalam derajat.
+     * Mengatur rotasi untuk seluruh RadarView (FrameLayout ini).
+     * Ini akan memutar RadarBackgroundView dan RadarPanelView di dalamnya.
+     * @param angle Sudut dalam derajat yang diterima dari SDK (seharusnya sudah disesuaikan, misal -sdkAngle).
      */
-    // override fun setRotation(rotation: Float) {
-    //     // Anda mungkin ingin agar hanya background atau panel yang berputar,
-    //     // atau seluruh view. Ini tergantung pada efek yang diinginkan.
-    //     // Untuk efek antena berputar, mungkin hanya background sapuan yang berputar.
-    //     // Namun, jika radarPanelView juga perlu tahu orientasi, maka seluruh view bisa dirotasi.
-    //
-    //     // Contoh: memutar background saja
-    //     // radarBackgroundView.setSweepAngleOffset(rotation) // Anda perlu menambah metode ini di RadarBackgroundView
-    //
-    //     // Atau memutar seluruh FrameLayout ini
-    //      super.setRotation(rotation)
-    // }
+    fun setRadarRotation(angle: Float) {
+        this.rotation = angle // `rotation` adalah properti standar dari android.view.View
+        // Log.d("RadarView", "FrameLayout rotation set to: $angle")
+    }
 
+    /**
+     * Membersihkan titik-titik tag yang ditampilkan di RadarPanelView.
+     */
     fun clearPanel() {
         radarPanelView.clear()
     }
+
+    // Fungsi setRotation() yang di-override bisa dihapus jika tidak ada logika khusus.
+    // Metode setRadarRotation() di atas lebih eksplisit untuk tujuan kita.
+    // override fun setRotation(rotation: Float) {
+    //     super.setRotation(rotation)
+    // }
 }
 

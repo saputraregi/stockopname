@@ -7,8 +7,7 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
-// PERBAIKAN IMPORT: Pastikan ini mengarah ke data class Anda, BUKAN MyApplication
-import com.example.aplikasistockopnameperpus.viewmodel.MyRadarLocationEntity
+import com.example.aplikasistockopnameperpus.model.RadarUiTag // PENTING: Gunakan RadarUiTag
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -18,12 +17,17 @@ class RadarPanelView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private val defaultTagPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val targetTagPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val defaultTagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#8000AFFF") // Biru untuk tag default
+        style = Paint.Style.FILL
+    }
+    private val targetTagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFFFD700") // Kuning/Emas untuk tag target
+        style = Paint.Style.FILL
+    }
 
-    // PERBAIKAN TIPE DATA: Gunakan List<MyRadarLocationEntity>
-    private var tagsToDisplay: List<com.rscja.deviceapi.entity.RadarLocationEntity> = emptyList()
+    // --- PERBAIKAN TIPE DATA ---
+    private var tagsToDisplay: List<RadarUiTag> = emptyList()
     private var currentTargetEpc: String? = null
 
     private var centerX: Float = 0f
@@ -32,48 +36,40 @@ class RadarPanelView @JvmOverloads constructor(
 
     private val defaultTagRadius = 12f
     private val targetTagRadius = 18f
-    private val maxRssiValue = 100
 
-    init {
-        defaultTagPaint.color = Color.parseColor("#8000AFFF")
-        defaultTagPaint.style = Paint.Style.FILL
-
-        targetTagPaint.color = Color.parseColor("#FFFFD700")
-        targetTagPaint.style = Paint.Style.FILL
-
-        textPaint.color = Color.WHITE
-        textPaint.textSize = 20f
-        textPaint.textAlign = Paint.Align.CENTER
-    }
+    // Nilai untuk normalisasi. 'distanceValue' dari SDK sudah berupa persentase (0-100).
+    private val maxValue = 100 // Nilai maksimum dari SDK (paling dekat)
+    private val minValue = 0   // Nilai minimum dari SDK (paling jauh)
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         centerX = w / 2f
         centerY = h / 2f
-        radius = (Math.min(w, h) / 2f) * 0.9f
+        radius = (minOf(w, h) / 2f) * 0.9f // Radius efektif 90%
         Log.d("RadarPanelView", "onSizeChanged: w=$w, h=$h, radius=$radius")
     }
 
+    // --- PERBAIKAN LOGIKA GAMBAR ---
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (radius <= 0) return
+        if (radius <= 0) return // Jangan menggambar jika ukuran belum valid
 
-        // Sekarang tagInfo adalah com.rscja.deviceapi.entity.RadarLocationEntity
-        // Anda perlu mengakses properti yang benar dari kelas SDK ini.
-        // Misal: tagInfo.value, tagInfo.angle, tagInfo.tag (atau tagInfo.getEpc(), tagInfo.getRssi(), tagInfo.getAngle())
-        tagsToDisplay.forEach { tagInfoSdk ->
-            // GANTI tagInfo.value, tagInfo.angle, tagInfo.tag DENGAN PROPERTI YANG BENAR DARI KELAS SDK
-            // Contoh (ANDA HARUS MEMVERIFIKASI NAMA PROPERTI DARI RadarLocationEntity SDK):
-            val rssi = tagInfoSdk.value // Asumsi 'value' adalah RSSI di kelas SDK
-            val angle = tagInfoSdk.angle // Asumsi 'angle' adalah sudut di kelas SDK
-            val epc = tagInfoSdk.tag    // Asumsi 'tag' adalah EPC di kelas SDK
+        tagsToDisplay.forEach { uiTag ->
+            val distanceValue = uiTag.distanceValue
+            val epc = uiTag.epc
+            val uiAngle = uiTag.uiAngle // Ambil sudut yang sudah jadi
 
-            val normalizedDistance = 1.0f - (rssi.toFloat() / maxRssiValue) // maxRssiValue mungkin perlu disesuaikan
+            // Normalisasi jarak: nilai 100 (dekat) -> jarak kecil dari pusat
+            // Nilai 0 (jauh) -> jarak besar (di tepi)
+            val normalizedDistance = (maxValue - distanceValue).toFloat() / (maxValue - minValue).toFloat()
             val distanceOnRadar = normalizedDistance * radius
-            val angleInRadians = Math.toRadians(angle.toDouble())
 
-            val tagX = centerX + (distanceOnRadar * cos(angleInRadians)).toFloat()
-            val tagY = centerY + (distanceOnRadar * sin(angleInRadians)).toFloat()
+            // Konversi sudut ke radian untuk fungsi sin/cos
+            val angleInRad = Math.toRadians(uiAngle.toDouble() - 90.0) // Kurangi 90 karena 0 derajat di Android adalah jam 3, bukan jam 12.
+
+            // Hitung posisi X dan Y menggunakan trigonometri
+            val tagX = centerX + (distanceOnRadar * cos(angleInRad)).toFloat()
+            val tagY = centerY + (distanceOnRadar * sin(angleInRad)).toFloat()
 
             val paintToUse: Paint
             val pointRadius: Float
@@ -84,18 +80,18 @@ class RadarPanelView @JvmOverloads constructor(
                 paintToUse = defaultTagPaint
                 pointRadius = defaultTagRadius
             }
+
             canvas.drawCircle(tagX, tagY, pointRadius, paintToUse)
+            Log.d("RadarPanelView_Draw", "Tag EPC: $epc, Angle: $uiAngle, Dist: $distanceOnRadar, X: $tagX, Y: $tagY")
         }
     }
 
-    /**
-     * Set daftar tag yang akan ditampilkan dan EPC target.
-     * PERBAIKAN TIPE PARAMETER: Gunakan List<MyRadarLocationEntity>
-     */
-    fun setTags(newTags: List<com.rscja.deviceapi.entity.RadarLocationEntity>, targetEpc: String?) {
+    // --- PERBAIKAN TIPE DATA FUNGSI ---
+    fun setTags(newTags: List<RadarUiTag>, targetEpc: String?) {
         this.tagsToDisplay = newTags
         this.currentTargetEpc = targetEpc
-        invalidate()
+        invalidate() // Perintahkan View untuk menggambar ulang
+        Log.d("RadarPanelView", "setTags called. Tag count: ${newTags.size}, Target: $targetEpc")
     }
 
     fun clear() {

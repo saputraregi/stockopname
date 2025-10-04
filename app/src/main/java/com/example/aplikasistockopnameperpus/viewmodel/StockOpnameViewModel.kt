@@ -22,6 +22,7 @@ import com.example.aplikasistockopnameperpus.model.FilterCriteria // PASTIKAN IM
 import com.example.aplikasistockopnameperpus.model.ScanMethod
 import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
 import com.example.aplikasistockopnameperpus.util.Constants
+import com.example.aplikasistockopnameperpus.util.RealtimeStreamManager // Import baru
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,7 +80,8 @@ class StockOpnameViewModel(application: Application) : AndroidViewModel(applicat
 
     private val bookRepository: BookRepository = (application as MyApplication).bookRepository
     private val sdkManager: ChainwaySDKManager = (application as MyApplication).sdkManager
-    // private val app = application // Ganti dengan getApplication()
+    private val realtimeStreamManager: RealtimeStreamManager = (application as MyApplication).realtimeStreamManager // Ganti dengan getApplication()
+    private val sentEpcCache = mutableSetOf<String>()
 
     private val defaultSessionNameFormat = Constants.EXPORT_DATE_FORMAT
 
@@ -180,9 +182,9 @@ class StockOpnameViewModel(application: Application) : AndroidViewModel(applicat
                 displayOpnameStatusText = context.getString(R.string.opname_status_missing_simplified)
                 displayOpnameStatusColor = ContextCompat.getColor(context, R.color.opname_status_missing_color)
             }
-            OpnameStatus.NEW_ITEM -> {
-                displayOpnameStatusText = context.getString(R.string.opname_status_new_item_simplified)
-                displayOpnameStatusColor = ContextCompat.getColor(context, R.color.opname_status_new_item_color)
+            OpnameStatus.NEW_ITEM -> { // Untuk tag/item baru di luar database
+                displayOpnameStatusText = context.getString(R.string.opname_status_new_item_detected) // PERLU STRING BARU: misal "BARU TERDETEKSI"
+                displayOpnameStatusColor = ContextCompat.getColor(context, R.color.opname_status_new_item_color) // Bisa warna yang berbeda dari FOUND
                 if (book.lastSeenTimestamp != null) {
                     var seenInfo = context.getString(R.string.opname_detected_at_prefix, dateFormat.format(Date(book.lastSeenTimestamp!!)))
                     if (!book.actualScannedLocation.isNullOrBlank()) {
@@ -305,23 +307,79 @@ class StockOpnameViewModel(application: Application) : AndroidViewModel(applicat
         _currentFilterCriteria.value = criteria
     }
 
+    private fun sendItemCodeToPc(epc: String) {
+        if (sentEpcCache.contains(epc)) {
+            return // Jika sudah, langsung keluar dan tidak melakukan apa-apa.
+        }
+        // Jalankan di coroutine agar tidak memblokir thread
+        viewModelScope.launch {
+            try {
+                // Cari buku di database berdasarkan EPC
+                val book = bookRepository.findBookByEpc(epc)
+
+                // Jika buku ditemukan, kirim item_code-nya
+                book?.let {
+                    realtimeStreamManager.sendData(it.itemCode)
+                    Log.i("StockOpnameViewModel", "Mengirim item_code '${it.itemCode}' dari EPC '$epc' ke PC.")
+                    sentEpcCache.add(epc)
+                } ?: Log.w("StockOpnameViewModel", "EPC '$epc' tidak ditemukan di DB, tidak ada data dikirim ke PC.")
+
+            } catch (e: Exception) {
+                Log.e("StockOpnameViewModel", "Error mencari EPC untuk streaming.", e)
+            }
+        }
+    }
+
     private fun setupSdkListeners() {
         sdkManager.onUhfTagScanned = { epc ->
             Log.d("StockOpnameViewModel", "SDK CB: onUhfTagScanned: $epc")
             if ((_uiState.value as? StockOpnameUiState.Success)?.isUhfScanning == true) {
                 processScannedIdentifier(epc, ScanMethod.UHF, getApplication<Application>().getString(R.string.default_scan_location_rfid))
+                sendItemCodeToPc(epc)
             } else {
                 Log.w("StockOpnameViewModel", "Received UHF tag for inventory but ViewModel not in UHF scanning state. Ignoring.")
             }
         }
+        // --- MODIFIKASI DI SINI ---
         sdkManager.onBarcodeScanned = { barcodeData ->
             Log.d("StockOpnameViewModel", "SDK CB: onBarcodeScanned: $barcodeData")
-            if ((_uiState.value as? StockOpnameUiState.Success)?.isBarcodeScanning == true) {
+            val currentSuccessState = _uiState.value as? StockOpnameUiState.Success
+
+            // Periksa apakah ViewModel memang sedang dalam mode scan barcode
+            if (currentSuccessState?.isBarcodeScanning == true) {
+                // 1. Proses data barcode yang diterima
                 processScannedIdentifier(barcodeData, ScanMethod.BARCODE, getApplication<Application>().getString(R.string.default_scan_location_barcode))
+                realtimeStreamManager.sendData(barcodeData)
+                // 2. Minta SDK Manager untuk menghentikan scan barcode
+                // Ini dilakukan SEGERA setelah data diterima oleh ViewModel dan proses awal dimulai.
+                Log.d("StockOpnameViewModel", "Barcode data ($barcodeData) received by VM. Requesting SDK Manager to STOP scan.")
+                sdkManager.stopBarcodeScan() // Panggil stop di SDK Manager
+
+                // 3. Update UI state di ViewModel untuk merefleksikan bahwa scan barcode sudah tidak aktif lagi
+                _uiState.update { uiStateCurrent ->
+                    if (uiStateCurrent is StockOpnameUiState.Success) {
+                        Log.d("StockOpnameViewModel", "Updating UI state: isBarcodeScanning to false after successful scan.")
+                        uiStateCurrent.copy(
+                            isBarcodeScanning = false,
+                            // Anda bisa juga memperbarui lastScanMessage di sini jika mau,
+                            // tapi processScannedIdentifier mungkin sudah melakukannya.
+                            // Misalnya: lastScanMessage = uiStateCurrent.lastScanMessage + " (Data diterima, scan berhenti)"
+                            lastScanMessage = getApplication<Application>().getString(R.string.barcode_scan_finished_data_received, barcodeData) // Buat string resource ini
+                        )
+                    } else {
+                        uiStateCurrent // Jika state bukan Success, jangan ubah
+                    }
+                }
             } else {
-                Log.w("StockOpnameViewModel", "Received Barcode but ViewModel not in Barcode scanning state. Ignoring.")
+                Log.w("StockOpnameViewModel", "Received Barcode but ViewModel not in Barcode scanning state (isBarcodeScanning is false or state is not Success). Ignoring.")
+                // Jika ViewModel tidak dalam mode scan barcode, tapi SDK mengirim data,
+                // mungkin ada baiknya juga memastikan SDK Manager berhenti jika ini adalah perilaku tak terduga.
+                // Namun, ini bisa menyebabkan konflik jika ada alasan lain SDK Manager mengirim data.
+                // Untuk sekarang, kita fokus pada kasus di mana ViewModel memang mengharapkan scan.
+                // sdkManager.stopBarcodeScan() // Pertimbangkan ini jika perlu "safety stop"
             }
         }
+        // --- AKHIR MODIFIKASI ---
         sdkManager.onError = { errorMessage ->
             Log.e("StockOpnameViewModel", "SDK CB: onError: $errorMessage")
             val newToastMessage = getApplication<Application>().getString(R.string.sdk_error_prefix, errorMessage)
@@ -430,77 +488,135 @@ class StockOpnameViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    // Di StockOpnameViewModel
     private fun processScannedIdentifier(identifier: String, method: ScanMethod, actualScannedLocationProvided: String) {
-        if (identifier.isBlank()) {
-            Log.w("StockOpnameViewModel", "Empty identifier received from $method, ignoring.")
-            return
-        }
+        if (identifier.isBlank()) { /* ... */ return }
 
         viewModelScope.launch {
             val book: BookMaster? = when (method) {
                 ScanMethod.UHF -> bookRepository.getBookByRfidTag(identifier)
                 ScanMethod.BARCODE -> bookRepository.getBookByItemCode(identifier)
             }
+            Log.d("StockOpname_DEBUG", "processScannedIdentifier: ID=$identifier, Method=$method. Book from DB: ${if (book != null) "FOUND (ID: ${book.id}, Title: ${book.title}, OpStatus: ${book.opnameStatus}, isNew: ${book.isNewOrUnexpected})" else "NOT FOUND"}")
+
 
             val currentTimestamp = System.currentTimeMillis()
             var scanMessage: String
-            var showToastForNewUnexpected = false
+            var toastMessage: String? = null // Ganti nama showToastForNewUnexpected agar lebih jelas
 
             if (book != null) {
+                // --- BUKU DIKENALI DI MASTER ---
                 val bookTitle = book.title ?: getApplication<Application>().getString(R.string.unknown_title)
-                if (book.opnameStatus == OpnameStatus.FOUND) {
-                    scanMessage = getApplication<Application>().getString(R.string.scan_already_processed_simplified, method.displayName, identifier, bookTitle)
-                    // Opsional: update timestamp jika perlu, tapi ini akan memicu recompose/re-filter
-                    // bookRepository.updateBookLastSeen(book.id, currentTimestamp, actualScannedLocationProvided)
-                } else {
-                    val newOpnameStatus = OpnameStatus.FOUND
-                    scanMessage = getApplication<Application>().getString(R.string.scan_success_item_found_simplified, method.displayName, identifier, bookTitle, actualScannedLocationProvided)
-                    try {
-                        when (method) {
-                            ScanMethod.UHF -> bookRepository.updateBookOpnameStatusByRfid(book.rfidTagHex ?: identifier, newOpnameStatus, currentTimestamp, actualScannedLocationProvided)
-                            ScanMethod.BARCODE -> bookRepository.updateBookOpnameStatusByItemCode(book.itemCode ?: identifier, newOpnameStatus, currentTimestamp, actualScannedLocationProvided)
+                val displayIdentifierForUi = book.itemCode ?: book.rfidTagHex ?: identifier
+
+                // Logika baru untuk menangani status buku yang sudah ada
+                when (book.opnameStatus) {
+                    OpnameStatus.FOUND -> {
+                        // Jika buku adalah item master yang sudah FOUND (bukan NEW_ITEM yang salah dilabeli FOUND)
+                        if (!book.isNewOrUnexpected) {
+                            scanMessage = getApplication<Application>().getString(R.string.last_scan_already_found, displayIdentifierForUi, bookTitle)
+                            // Opsional: update lastSeenTimestamp jika perlu, meskipun sudah FOUND
+                            // bookRepository.updateBookOpnameStatusByRfid(book.rfidTagHex ?: identifier, OpnameStatus.FOUND, currentTimestamp, actualScannedLocationProvided)
+                        } else {
+                            // Ini kasus aneh: buku ditandai isNewOrUnexpected TAPI statusnya FOUND.
+                            // Seharusnya ini tidak terjadi jika insert awal benar.
+                            // Untuk keamanan, kita anggap sebagai scan ulang item baru.
+                            scanMessage = getApplication<Application>().getString(R.string.last_scan_unknown_already_logged, displayIdentifierForUi) // Gunakan displayIdentifierForUi jika itemCode-nya "NEW_EPC_..."
+                            // Update timestamp & lokasi untuk item baru ini
+                            bookRepository.updateBookOpnameStatusByRfid(book.rfidTagHex ?: identifier, OpnameStatus.NEW_ITEM, currentTimestamp, actualScannedLocationProvided)
+                            Log.w("StockOpnameViewModel", "Book ${book.id} isNewOrUnexpected=true but OpStatus=FOUND. Treating as re-scan of NEW_ITEM. Updated timestamp/location.")
                         }
-                        Log.i("StockOpnameViewModel", "BookMaster '$bookTitle' (ID: ${book.id}, Scanned via: $method) status updated to $newOpnameStatus at $actualScannedLocationProvided")
-                    } catch (e: Exception) {
-                        Log.e("StockOpnameViewModel", "Failed to update book status for ${book.id} via $method", e)
-                        scanMessage = getApplication<Application>().getString(R.string.error_updating_book_status_in_db, bookTitle)
+                    }
+                    OpnameStatus.NEW_ITEM -> {
+                        // Buku ini memang item baru yang sudah ada di DB. Hanya update timestamp/lokasi.
+                        scanMessage = getApplication<Application>().getString(R.string.last_scan_unknown_already_logged, displayIdentifierForUi) // Gunakan displayIdentifierForUi
+                        try {
+                            // Update lastSeenTimestamp dan actualScannedLocation untuk item NEW_ITEM ini
+                            when (method) {
+                                ScanMethod.UHF -> bookRepository.updateBookOpnameStatusByRfid(book.rfidTagHex ?: identifier, OpnameStatus.NEW_ITEM, currentTimestamp, actualScannedLocationProvided)
+                                ScanMethod.BARCODE -> bookRepository.updateBookOpnameStatusByItemCode(book.itemCode ?: identifier, OpnameStatus.NEW_ITEM, currentTimestamp, actualScannedLocationProvided)
+                            }
+                            Log.i("StockOpnameViewModel", "Re-scanned NEW_ITEM '${bookTitle}' (ID: ${book.id}). Updated timestamp/location.")
+                        } catch (e: Exception) {
+                            Log.e("StockOpnameViewModel", "Failed to update timestamp for re-scanned NEW_ITEM ${book.id}", e)
+                            scanMessage = getApplication<Application>().getString(R.string.error_updating_book_status_in_db, bookTitle)
+                        }
+                    }
+                    OpnameStatus.NOT_SCANNED, OpnameStatus.MISSING -> {
+                        // Buku dari master (bukan NEW_ITEM) yang belum discan atau hilang, sekarang ditemukan
+                        if (!book.isNewOrUnexpected) {
+                            val newStatus = OpnameStatus.FOUND
+                            scanMessage = getApplication<Application>().getString(R.string.last_scan_found, displayIdentifierForUi, bookTitle, actualScannedLocationProvided)
+                            try {
+                                when (method) {
+                                    ScanMethod.UHF -> bookRepository.updateBookOpnameStatusByRfid(book.rfidTagHex ?: identifier, newStatus, currentTimestamp, actualScannedLocationProvided)
+                                    ScanMethod.BARCODE -> bookRepository.updateBookOpnameStatusByItemCode(book.itemCode ?: identifier, newStatus, currentTimestamp, actualScannedLocationProvided)
+                                }
+                                Log.i("StockOpnameViewModel", "BookMaster '$bookTitle' (ID: ${book.id}) status updated to $newStatus at $actualScannedLocationProvided")
+                            } catch (e: Exception) {
+                                Log.e("StockOpnameViewModel", "Failed to update book status for ${book.id} to FOUND", e)
+                                scanMessage = getApplication<Application>().getString(R.string.error_updating_book_status_in_db, bookTitle)
+                            }
+                        } else {
+                            // Kasus aneh: isNewOrUnexpected=true tapi statusnya NOT_SCANNED/MISSING. Seharusnya langsung NEW_ITEM.
+                            // Ini berarti ada yang salah saat insert awal. Kita akan treat sebagai NEW_ITEM baru.
+                            // Sebaiknya, log error ini karena tidak seharusnya terjadi.
+                            Log.e("StockOpnameViewModel", "Error: Book ${book.id} isNewOrUnexpected=true but status is ${book.opnameStatus}. Forcing to NEW_ITEM.")
+                            val statusToSet = OpnameStatus.NEW_ITEM
+                            scanMessage = getApplication<Application>().getString(R.string.last_scan_new_item_added, displayIdentifierForUi) // atau last_scan_unknown
+                            try {
+                                when (method) {
+                                    ScanMethod.UHF -> bookRepository.updateBookOpnameStatusByRfid(book.rfidTagHex ?: identifier, statusToSet, currentTimestamp, actualScannedLocationProvided)
+                                    ScanMethod.BARCODE -> bookRepository.updateBookOpnameStatusByItemCode(book.itemCode ?: identifier, statusToSet, currentTimestamp, actualScannedLocationProvided)
+                                }
+                            } catch (e: Exception) { /* ... */ }
+                        }
                     }
                 }
             } else {
-                scanMessage = getApplication<Application>().getString(R.string.scan_item_not_in_master, method.displayName, identifier)
-                showToastForNewUnexpected = true
+                // --- EPC/BARCODE TIDAK DIKENALI DI MASTER ---
+                scanMessage = getApplication<Application>().getString(R.string.last_scan_unknown, identifier)
+                toastMessage = getApplication<Application>().getString(R.string.scan_item_not_in_master_new, method.displayName, identifier)
                 Log.w("StockOpnameViewModel", "Identifier '$identifier' by $method not in master. Processing as new/unexpected.")
 
-                val isAlreadyTempUnexpected = _temporaryUnexpectedItems.value.any { tempItem ->
-                    (method == ScanMethod.UHF && tempItem.rfidTagHexScanned == identifier) ||
-                            (method == ScanMethod.BARCODE && tempItem.itemCodeMaster == identifier && tempItem.itemCodeMaster != null)
-                }
-                // Cek juga apakah sudah ada sebagai item baru di master
-                val existingNewInMaster = bookRepository.findNewOrUnexpectedItemByIdentifier(identifier, method)
+                // Cek _temporaryUnexpectedItems tidak diperlukan lagi jika kita selalu insert ke master
+                // val isAlreadyTempUnexpected = _temporaryUnexpectedItems.value.any { ... }
 
+                // Cek apakah sudah ada sebagai item BARU di master
+                // Fungsi findNewOrUnexpectedItemByIdentifier harus spesifik mencari item yang isNewOrUnexpected = true DAN opnameStatus = NEW_ITEM
+                val existingTrulyNewInMaster = bookRepository.findNewOrUnexpectedItemByIdentifier(identifier, method)
 
-                if (!isAlreadyTempUnexpected && existingNewInMaster == null) {
+                if (existingTrulyNewInMaster == null) {
                     val newBookForMaster = BookMaster(
                         itemCode = if (method == ScanMethod.BARCODE) identifier else "NEW_EPC_${identifier.takeLast(6)}_${System.currentTimeMillis().toString().takeLast(4)}",
                         title = getApplication<Application>().getString(R.string.unknown_item_title_prefix, identifier),
                         rfidTagHex = if (method == ScanMethod.UHF) identifier else null,
-                        opnameStatus = OpnameStatus.NEW_ITEM,
-                        pairingStatus = if (method == ScanMethod.UHF) PairingStatus.PAIRED_WRITE_SUCCESS else PairingStatus.NOT_PAIRED,
+                        opnameStatus = OpnameStatus.NEW_ITEM, // <--- BENAR
+                        pairingStatus = PairingStatus.NOT_PAIRED,
                         lastSeenTimestamp = currentTimestamp,
                         actualScannedLocation = actualScannedLocationProvided,
-                        locationName = actualScannedLocationProvided, // "Expected" location for new item
-                        isNewOrUnexpected = true
+                        locationName = actualScannedLocationProvided,
+                        isNewOrUnexpected = true // <--- BENAR
                     )
+                    Log.d("StockOpname_DEBUG", "Creating new BookMaster for DB: opnameStatus=${newBookForMaster.opnameStatus}, isNew=${newBookForMaster.isNewOrUnexpected}, EPC=${newBookForMaster.rfidTagHex}")
                     try {
                         bookRepository.insertOrUpdateBookMaster(newBookForMaster)
-                        scanMessage = getApplication<Application>().getString(R.string.scan_new_item_added_to_master_simplified, identifier)
+                        scanMessage = getApplication<Application>().getString(R.string.last_scan_new_item_added, identifier)
                     } catch (e: Exception) {
                         Log.e("StockOpnameViewModel", "Failed to insert new unexpected item to master: $identifier", e)
                         scanMessage = getApplication<Application>().getString(R.string.error_adding_new_item_to_db, identifier)
                     }
                 } else {
-                    scanMessage = getApplication<Application>().getString(R.string.scan_unexpected_already_logged_simplified, identifier)
-                    showToastForNewUnexpected = false
+                    // Sudah ada di master sebagai NEW_ITEM, cukup update timestamp/lokasi
+                    scanMessage = getApplication<Application>().getString(R.string.last_scan_unknown_already_logged, identifier)
+                    try {
+                        when (method) {
+                            ScanMethod.UHF -> bookRepository.updateBookOpnameStatusByRfid(existingTrulyNewInMaster.rfidTagHex ?: identifier, OpnameStatus.NEW_ITEM, currentTimestamp, actualScannedLocationProvided)
+                            ScanMethod.BARCODE -> bookRepository.updateBookOpnameStatusByItemCode(existingTrulyNewInMaster.itemCode ?: identifier, OpnameStatus.NEW_ITEM, currentTimestamp, actualScannedLocationProvided)
+                        }
+                        Log.i("StockOpnameViewModel", "Re-scanned existing NEW_ITEM '${existingTrulyNewInMaster.title}' (ID: ${existingTrulyNewInMaster.id}). Updated timestamp/location.")
+                    } catch (e: Exception) { /* ... */ }
+                    toastMessage = null // Tidak perlu toast jika hanya update timestamp item baru yang sudah ada
                 }
             }
 
@@ -508,13 +624,12 @@ class StockOpnameViewModel(application: Application) : AndroidViewModel(applicat
                 if (currentState is StockOpnameUiState.Success) {
                     currentState.copy(
                         lastScanMessage = scanMessage,
-                        toastMessage = if (showToastForNewUnexpected && currentState.toastMessage == null) scanMessage else null // Hanya set toast jika belum ada
+                        toastMessage = toastMessage // Gunakan toastMessage yang sudah di-set di atas
                     )
                 } else currentState
             }
         }
     }
-
 
     fun toggleUhfScan() {
         val currentState = _uiState.value
@@ -538,6 +653,8 @@ class StockOpnameViewModel(application: Application) : AndroidViewModel(applicat
                     }
                     return
                 }
+                sentEpcCache.clear()
+                Log.d("StockOpnameViewModel", "New UHF scan session started. Sent EPC cache cleared.")
                 sdkManager.startUhfInventory()
                 Log.d("StockOpnameViewModel", "Requesting to Start UHF Inventory Scan")
                 _uiState.update {
@@ -589,6 +706,8 @@ class StockOpnameViewModel(application: Application) : AndroidViewModel(applicat
                     }
                     return
                 }
+                sentEpcCache.clear()
+                Log.d("StockOpnameViewModel", "New Barcode scan session started. Sent EPC cache cleared.")
                 sdkManager.startBarcodeScan()
                 Log.d("StockOpnameViewModel", "Requesting to Start Barcode Scan")
                 _uiState.update {

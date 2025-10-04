@@ -18,6 +18,7 @@ import com.rscja.deviceapi.entity.RadarLocationEntity
 import com.rscja.deviceapi.interfaces.ConnectionStatus
 import com.rscja.deviceapi.interfaces.IUHF
 import com.rscja.deviceapi.interfaces.IUHFRadarLocationCallback
+import com.example.aplikasistockopnameperpus.model.RadarUiTag
 
 object ErrorCodeManage {
     // ... (Implementasi ErrorCodeManage.getMessage tetap sama seperti yang terakhir kita diskusikan)
@@ -93,7 +94,7 @@ class ChainwaySDKManager(private val application: Application) {
     var onTagLockSuccess: (() -> Unit)? = null
     var onTagLockFailed: ((errorMessage: String) -> Unit)? = null
     var onUhfOperationStopped: (() -> Unit)? = null
-    var onUhfRadarDataUpdated: ((tags: List<RadarLocationEntity>, angle: Int) -> Unit)? = null
+    var onUhfRadarDataUpdated: ((tags: List<RadarUiTag>) -> Unit)? = null
     var onUhfRadarError: ((message: String) -> Unit)? = null
     var onUhfRadarStarted: (() -> Unit)? = null
     var onUhfRadarStopped: (() -> Unit)? = null
@@ -133,19 +134,49 @@ class ChainwaySDKManager(private val application: Application) {
         const val PROTOCOL_GEN2 = 0 // Umumnya 0 untuk ISO18000-6C / EPC Gen2
         // UHFSetFragment menggunakan SpinnerAgreement.getSelectedItemPosition()
         // yang biasanya dimulai dari 0.
+        private const val SDK_FRONT_OFFSET = 0
     }
 
-    private var currentRadarAngle: Int = 0
+    private var sdkRawRadarAngle: Int = 0
+
     private val radarCallbackInternal = object : IUHFRadarLocationCallback {
+        override fun getAngleValue(angle: Int) {
+            // Fungsi ini sengaja dikosongkan karena kita menggunakan sudut dari setiap tag
+        }
+
         override fun getLocationValue(list: MutableList<RadarLocationEntity>?) {
+            if (list == null) {
+                Handler(Looper.getMainLooper()).post { onUhfRadarDataUpdated?.invoke(emptyList()) }
+                return
+            }
+
+            val processedTags = list.map { sdkTag ->
+                val rawAngle = sdkTag.angle
+                val normalizedAngle = rawAngle - SDK_FRONT_OFFSET
+                val finalUiAngle = -normalizedAngle
+
+                RadarUiTag(
+                    epc = sdkTag.tag,
+                    distanceValue = sdkTag.value,
+                    uiAngle = finalUiAngle
+                )
+            }
+
+            // Logging ini SANGAT PENTING untuk debug. Jangan dihapus.
+            if (processedTags.isNotEmpty()) {
+                val firstTag = processedTags.first()
+                Log.d(TAG, "Radar Data: Ditemukan ${processedTags.size} tag. Contoh Tag Pertama -> EPC: ${firstTag.epc}, Sudut UI Final: ${firstTag.uiAngle}")
+            }
+
             Handler(Looper.getMainLooper()).post {
-                onUhfRadarDataUpdated?.invoke(list ?: emptyList(), currentRadarAngle)
+                onUhfRadarDataUpdated?.invoke(processedTags)
             }
         }
-        override fun getAngleValue(angle: Int) {
-            currentRadarAngle = angle
-        }
     }
+// ...
+
+// Pastikan callback di Activity/ViewModel Anda mengharapkan sudut yang sudah disesuaikan:
+// var onUhfRadarDataUpdated: ((tags: List<RadarLocationEntity>, adjustedUiAngle: Int) -> Unit)? = null
 
     init {
         Log.d(TAG, "ChainwaySDKManager constructor called.")
@@ -275,24 +306,52 @@ class ChainwaySDKManager(private val application: Application) {
         }
     }
 
+    // Di ChainwaySDKManager.kt
+    // Di ChainwaySDKManager.kt
     fun startUhfInventory() {
         if (!isDeviceReady("uhf")) { Handler(Looper.getMainLooper()).post { onError?.invoke("UHF: Not ready for inventory.") }; return }
         if (isBarcodeDeviceScanning) { Handler(Looper.getMainLooper()).post { onError?.invoke("Hentikan scan barcode dahulu.")}; return }
-        if (isUhfRadarActive) { Handler(Looper.getMainLooper()).post { onError?.invoke("Hentikan radar dahulu sebelum inventory.") }; return }
-        if (isUhfDeviceScanning) { Log.w(TAG, "UHF inventory scan sudah berjalan."); return }
+        if (isUhfRadarActive) {
+            Handler(Looper.getMainLooper()).post { onError?.invoke("Hentikan radar dahulu sebelum inventory.") }; return
+        }
+        if (isUhfDeviceScanning) {
+            Log.w(TAG, "UHF inventory scan sudah berjalan (mungkin dari instance/panggilan lain).");
+            return
+        }
 
-        if (uhfReader?.startInventoryTag() == true) {
+        // --- INI ADALAH PERUBAHAN YANG SANGAT PENTING ---
+        Log.d(TAG, "Setting inventory callback to 'inventoryCallback' before starting inventory.")
+        uhfReader?.setInventoryCallback(inventoryCallback) // Pastikan 'inventoryCallback' adalah implementasi IUHFInventoryCallback Anda yang benar
+        // ---------------------------------------------
+
+        Log.d(TAG, "Attempting to call uhfReader.startInventoryTag(). uhfReader is null: ${uhfReader == null}")
+        val started = uhfReader?.startInventoryTag()
+        Log.d(TAG, "uhfReader.startInventoryTag() returned: $started")
+
+        if (started == true) {
             isUhfDeviceScanning = true
             Log.i(TAG, "Inventarisasi UHF SDK DIMULAI.")
         } else {
             isUhfDeviceScanning = false
-            Handler(Looper.getMainLooper()).post {
-                onError?.invoke("Gagal memulai scan UHF. ${getUhfLastErrorString()}")
-                onUhfInventoryFinished?.invoke()
-                onUhfOperationStopped?.invoke()
-            }
-            Log.e(TAG, "Gagal memulai scan UHF. ${getUhfLastErrorString()}")
+            // ... (blok error Anda) ...
         }
+    }
+
+    private val inventoryCallback = object : IUHFInventoryCallback {
+        override fun callback(uhfTagInfo: UHFTAGInfo?) { // Nama parameter mungkin berbeda di SDK Anda, sesuaikan
+            if (uhfTagInfo != null && !uhfTagInfo.epc.isNullOrEmpty()) {
+                Log.d(TAG, "SDK_CALLBACK (inventoryCallback): EPC: ${uhfTagInfo.epc}")
+                Handler(Looper.getMainLooper()).post {
+                    onUhfTagScanned?.invoke(uhfTagInfo.epc)
+                }
+            } else {
+                Log.w(TAG, "SDK_CALLBACK (inventoryCallback): uhfTagInfo is null or EPC is empty.")
+            }
+        }
+        // Jika ada metode lain di IUHFInventoryCallback (seperti onInventoryStop), implementasikan juga
+        // Berdasarkan definisi Anda, sepertinya hanya ada satu metode `callback`.
+        // SDK Anda di RFIDWithUHFUART.java juga memiliki metode onInventoryStop di IUHFInventoryCallback yang diimplementasikan di UhfBase.
+        // Jadi, callback object Anda mungkin perlu seperti ini jika itu adalah IUHFInventoryCallback yang sama yang digunakan oleh SDK:
     }
 
     fun writeUhfTag(epcDataHex: String, currentEpcFilter: String? = null, passwordAccess: String = "00000000") {
@@ -385,6 +444,66 @@ class ChainwaySDKManager(private val application: Application) {
         } finally { isUhfDeviceScanning = false; Handler(Looper.getMainLooper()).post { onUhfOperationStopped?.invoke() } }
     }
 
+    // Di ChainwaySDKManager.kt
+
+    // Callback yang sudah ada:
+    // var onTagReadTidSuccess: ((tid: String, epcAssociated: String?) -> Unit)? = null // epcAssociated bisa jadi EPC yang digunakan untuk filter
+    // var onTagReadTidFailed: ((errorMessage: String) -> Unit)? = null
+
+    fun readTidUsingEpcFilter(
+        epcToFilterHex: String,
+        // Anda mungkin tidak butuh password di sini jika default,
+        // atau bisa tambahkan jika readData membutuhkannya & tidak ada default di SDK.
+        // Untuk Chainway, password biasanya diperlukan untuk readData.
+        passwordAccess: String = "00000000", // Default password
+        tidReadLengthInWords: Int = 6 // Default 6 words untuk TID (12 bytes / 24 hex chars)
+    ) {
+        if (!isDeviceReady("uhf")) {
+            Handler(Looper.getMainLooper()).post { onTagReadTidFailed?.invoke("UHF not ready for TID read (filter).") }
+            return
+        }
+        if (epcToFilterHex.isBlank() || epcToFilterHex.length != 24) { // Validasi panjang EPC
+            Handler(Looper.getMainLooper()).post { onTagReadTidFailed?.invoke("Invalid EPC format for TID read filter.") }
+            return
+        }
+        if (isUhfDeviceScanning || isBarcodeDeviceScanning) { // Atau hanya isUhfDeviceScanning jika tidak ingin bentrok dengan radar
+            Handler(Looper.getMainLooper()).post { onTagReadTidFailed?.invoke("Device busy, cannot read TID (filter).") }
+            return
+        }
+        if (uhfReader?.isInventorying() == true) {
+            Log.w(TAG, "Inventory is running. Stopping before filtered TID read.")
+            uhfReader?.stopInventory()
+            try { Thread.sleep(100) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
+        }
+
+        Log.i(TAG, "Attempting to read TID using EPC filter: $epcToFilterHex")
+        val tidDataHex = uhfReader?.readData(
+            passwordAccess, // Password
+            IUHF.Bank_EPC,  // Bank untuk filter
+            32,             // Pointer awal filter (setelah PC word) dalam bit
+            epcToFilterHex.length * 4, // Panjang data filter dalam bit
+            epcToFilterHex, // Data EPC untuk filter
+            IUHF.Bank_TID,  // Bank yang akan dibaca (TID)
+            0,              // Alamat awal baca di TID bank (word)
+            tidReadLengthInWords  // Jumlah word yang akan dibaca
+        )
+
+        Log.i(TAG, "SDK readData (filter) for TID returned: '$tidDataHex'")
+
+        if (tidDataHex != null && tidDataHex.isNotBlank() && !tidDataHex.all { it == '0' }) {
+            // EPC yang digunakan untuk filter bisa dikirim kembali sebagai epcAssociated
+            Handler(Looper.getMainLooper()).post { onTagReadTidSuccess?.invoke(tidDataHex, epcToFilterHex) }
+        } else {
+            val errorMsg = if (tidDataHex == null) "Tag tidak merespons atau error SDK. ${getUhfLastErrorString()}"
+            else "TID yang dibaca kosong atau tidak valid."
+            Handler(Looper.getMainLooper()).post { onTagReadTidFailed?.invoke(errorMsg) }
+        }
+        // Operasi ini singkat, tidak perlu set isUhfDeviceScanning = false secara eksplisit di sini
+        // kecuali Anda menyetelnya true di awal fungsi ini.
+        // Jika Anda menambahkan isUhfDeviceScanning = true di awal, jangan lupa set false dan panggil onUhfOperationStopped
+    }
+
+
     fun lockUhfTag(targetEpc: String?, passwordAccess: String, lockBank: Int, lockAction: Int) {
         if (!isDeviceReady("uhf")) { Handler(Looper.getMainLooper()).post { onTagLockFailed?.invoke("UHF not ready for lock") }; return }
         if (isUhfDeviceScanning || isBarcodeDeviceScanning) { Handler(Looper.getMainLooper()).post { onTagLockFailed?.invoke("Device busy") }; return }
@@ -423,31 +542,53 @@ class ChainwaySDKManager(private val application: Application) {
     }
 
     fun startUhfRadar(context: Context, targetEpc: String?) {
-        if (!initUhfRadarIfNeeded(context)) return // initUhfRadarIfNeeded sudah dipindahkan ke atas
+        if (!initUhfRadarIfNeeded(context)) return
         if (isUhfRadarActive) { Log.w(TAG, "Radar UHF sudah aktif."); return }
         if (isUhfDeviceScanning && !isUhfRadarActive) { Handler(Looper.getMainLooper()).post { onUhfRadarError?.invoke("Hentikan inventory dahulu.") }; return }
         if (uhfReader?.isInventorying() == true) {
             Log.w(TAG, "Inventory is running. Stopping before starting radar.")
             uhfReader?.stopInventory(); try { Thread.sleep(100) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
         }
-        val bank = IUHF.Bank_EPC; val address = 32; currentRadarAngle = 0
+
+        // Penyesuaian di sini:
+        sdkRawRadarAngle = 0 // Reset sudut mentah SDK saat memulai radar baru
+
+        val bank = IUHF.Bank_EPC
+        val address = 32
+        // val tidak perlu lagi di sini jika currentRadarAngle sudah diganti namanya
+        // menjadi sdkRawRadarAngle dan merupakan variabel kelas.
+
+        Log.d(TAG, "Starting radar. Initial sdkRawRadarAngle set to 0.")
         val success = uhfReader?.startRadarLocation(context, targetEpc, bank, address, radarCallbackInternal)
+
         if (success == true) {
-            isUhfRadarActive = true; isUhfDeviceScanning = true
-            Handler(Looper.getMainLooper()).post { onUhfRadarStarted?.invoke() }; Log.i(TAG, "Pelacakan radar UHF DIMULAI untuk EPC: $targetEpc")
+            isUhfRadarActive = true
+            isUhfDeviceScanning = true // Radar juga dianggap sebagai operasi "scanning" pada perangkat UHF
+            Handler(Looper.getMainLooper()).post { onUhfRadarStarted?.invoke() }
+            Log.i(TAG, "Pelacakan radar UHF DIMULAI untuk EPC: $targetEpc")
         } else {
-            isUhfRadarActive = false; isUhfDeviceScanning = false
-            val errorMsg = "Gagal memulai radar. ${getUhfLastErrorString()}"; Handler(Looper.getMainLooper()).post { onUhfRadarError?.invoke(errorMsg) }; Log.e(TAG, errorMsg)
+            isUhfRadarActive = false
+            isUhfDeviceScanning = false
+            val errorMsg = "Gagal memulai radar. ${getUhfLastErrorString()}"
+            Handler(Looper.getMainLooper()).post { onUhfRadarError?.invoke(errorMsg) }
+            Log.e(TAG, errorMsg)
         }
     }
 
     fun stopUhfRadar() {
         if (!isUhfRadarActive) { Log.w(TAG, "Radar UHF tidak aktif."); return }
+        Log.d(TAG, "Attempting to stop UHF Radar.")
         val result = uhfReader?.stopRadarLocation()
-        isUhfRadarActive = false; isUhfDeviceScanning = false
-        Log.i(TAG, "Perintah stop radar dikirim. Hasil SDK: $result")
+        // uhfReader?.stopInventory() // Opsional: coba tambahkan ini untuk melihat apakah berpengaruh
+
+        isUhfRadarActive = false
+        isUhfDeviceScanning = false // Ini sudah benar
+        Log.i(TAG, "Perintah stop radar dikirim. Hasil SDK: $result. UHF Radar DIHENTIKAN.")
         Handler(Looper.getMainLooper()).post { onUhfRadarStopped?.invoke() }
         if (result != true) { Handler(Looper.getMainLooper()).post { onUhfRadarError?.invoke("SDK gagal stop radar. ${getUhfLastErrorString()}") } }
+
+        // Pertimbangkan juga untuk me-null-kan callback radar di sini jika SDK tidak melakukannya
+        // uhfReader?.setRadarLocationCallback(null) // Atau apa pun metode untuk clear callback radar
     }
 
     fun setUhfRadarDynamicDistance(parameter: Int): Boolean {
@@ -470,12 +611,17 @@ class ChainwaySDKManager(private val application: Application) {
         if (!isDeviceReady("barcode")) { Handler(Looper.getMainLooper()).post { onError?.invoke("Barcode: Not ready.")}; return }
         if (isUhfDeviceScanning) { Handler(Looper.getMainLooper()).post { onError?.invoke("Hentikan operasi UHF dahulu.")}; return }
         if (isBarcodeDeviceScanning) { Log.w(TAG, "Barcode scan sudah berjalan."); return }
-        val success = barcodeDecoder?.startScan()
+        val success = barcodeDecoder?.startScan();Log.i(TAG, "Metode startBarcodeScan() SDK Manager dipanggil.")
         if (success == true) { isBarcodeDeviceScanning = true; Log.i(TAG, "Scan barcode DIMULAI.") }
         else { Handler(Looper.getMainLooper()).post { onError?.invoke("Gagal memulai scan barcode.")}; Log.e(TAG, "Gagal memulai scan barcode.") }
     }
     fun stopBarcodeScan() {
-        if (isBarcodeDeviceScanning) { barcodeDecoder?.stopScan(); isBarcodeDeviceScanning = false; Log.i(TAG, "Scan barcode DIHENTIKAN.") }
+        if (isBarcodeDeviceScanning) { // Hanya jika memang sedang aktif
+            barcodeDecoder?.stopScan()     // Perintah SDK untuk berhenti
+            isBarcodeDeviceScanning = false // Set status internal
+            Log.i(TAG, "Scan barcode DIHENTIKAN (otomatis setelah decode/atau oleh pengguna).")
+            // ...
+        }
     }
 
     fun getUhfPower(): Int? { if (!isDeviceReady("uhf")) { Handler(Looper.getMainLooper()).post { onError?.invoke("UHF: Fail Get Power (Not Ready)")}; return null }; return try { uhfReader?.power } catch (e: Exception) { Handler(Looper.getMainLooper()).post { onError?.invoke("UHF: Err Get Power (${e.message})")}; null } }
@@ -519,16 +665,42 @@ class ChainwaySDKManager(private val application: Application) {
     }
 
     private fun setupBarcodeListener() {
+        // Di dalam setupBarcodeListener()
         barcodeDecoder?.setDecodeCallback(object : BarcodeDecoder.DecodeCallback {
             override fun onDecodeComplete(barcodeEntity: BarcodeEntity?) {
                 Handler(Looper.getMainLooper()).post {
+                    Log.d(TAG, "INTERNAL SDK CB: onDecodeComplete - ResultCode: ${barcodeEntity?.resultCode}") // LOG BARU
                     if (barcodeEntity?.resultCode == BarcodeDecoder.DECODE_SUCCESS) {
-                        barcodeEntity.barcodeData?.let { data -> if (data.isNotEmpty()) onBarcodeScanned?.invoke(data) }
-                    } else { onError?.invoke("Barcode scan failed: ${barcodeEntity?.resultCode}") }
-                    isBarcodeDeviceScanning = false
+                        barcodeEntity.barcodeData?.let { data ->
+                            if (data.isNotEmpty()) {
+                                Log.i(TAG, "BARCODE DECODED (SDK Manager): '$data'") // LOG BARU
+                                onBarcodeScanned?.invoke(data)
+                                Log.i(TAG, "Callback onBarcodeScanned (VM) CALLED with: '$data'") // LOG BARU
+                            } else {
+                                Log.w(TAG, "BARCODE DECODED (SDK Manager): Data is empty.")
+                            }
+                        } ?: Log.w(TAG, "BARCODE DECODED (SDK Manager): BarcodeData is null.")
+                    } else {
+                        val errorMsg = "Barcode scan failed. ResultCode: ${barcodeEntity?.resultCode}"
+                        Log.e(TAG, "BARCODE ERROR (SDK Manager): $errorMsg")
+                        onError?.invoke(errorMsg)
+                    }
+                    // Hentikan scan jika ini adalah operasi sekali tembak
+                    if (isBarcodeDeviceScanning) {
+                        Log.d(TAG, "Stopping barcode scan from onDecodeComplete as it's a single shot.")
+                        stopBarcodeScan() // Panggil fungsi stop Anda yang sudah ada
+                    }
                 }
             }
+            // override fun onError(errorCode: Int, message: String?) {
+            //     Log.e(TAG, "BARCODE SCAN ERROR (SDK Manager CB): $errorCode - $message")
+            //     Handler(Looper.getMainLooper()).post {
+            //         onError?.invoke("Barcode Decode Error: $message ($errorCode)")
+            //         isBarcodeDeviceScanning = false
+            //     }
+            // }
         })
+        Log.i(TAG, "BarcodeDecoder DecodeCallback has been SET via setupBarcodeListener().")
     }
 
     fun releaseResources() {

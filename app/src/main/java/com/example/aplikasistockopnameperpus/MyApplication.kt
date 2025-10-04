@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.aplikasistockopnameperpus.data.database.AppDatabase
 import com.example.aplikasistockopnameperpus.data.repository.BookRepository
 import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
+import com.example.aplikasistockopnameperpus.util.RealtimeStreamManager
 
 class MyApplication : Application() {
 
@@ -16,6 +17,10 @@ class MyApplication : Application() {
             stockOpnameReportDao = database.stockOpnameReportDao(),
             stockOpnameItemDao = database.stockOpnameItemDao()
         )
+    }
+
+    val realtimeStreamManager: RealtimeStreamManager by lazy {
+        RealtimeStreamManager()
     }
 
     // Hanya satu instance dari ChainwaySDKManager yang dikelola di sini

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Izinkan koneksi cleartext (http/ws) secara default untuk semua domain.
+        Ini adalah solusi yang paling sederhana untuk pengembangan dan jaringan lokal.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!--
+        OPSI YANG LEBIH AMAN (jika Anda ingin lebih spesifik):
+        Jika Anda hanya ingin mengizinkan IP lokal, Anda bisa menggunakan konfigurasi ini.
+        Komentari <base-config> di atas dan gunakan yang ini jika Anda lebih suka.
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.1.0</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+    -->
+</network-security-config>

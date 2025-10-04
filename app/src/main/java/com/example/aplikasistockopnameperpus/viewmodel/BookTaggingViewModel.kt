@@ -6,8 +6,6 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-// Jika MyApplication digunakan untuk mendapatkan SDKManager, pastikan importnya ada
-// import com.example.aplikasistockopnameperpus.MyApplication
 import com.example.aplikasistockopnameperpus.data.database.BookMaster
 import com.example.aplikasistockopnameperpus.data.database.PairingStatus
 import com.example.aplikasistockopnameperpus.data.repository.BookRepository
@@ -23,10 +21,9 @@ enum class TaggingState {
     BOOK_SEARCHING,
     BOOK_FOUND_UNTAGGED,
     BOOK_FOUND_ALREADY_TAGGED,
-    // AWAITING_TAG_FOR_TID_READ, // Mungkin tidak lagi diperlukan jika langsung scan
-    READING_TID,
-    // TID_READ_AWAITING_EPC_CONFIRM, // Digabung ke READING_EPC_FOR_CONFIRMATION
-    READING_EPC_FOR_CONFIRMATION,
+    READING_INITIAL_EPC,       // State untuk membaca EPC awal dari tag terdekat
+    READING_TID_WITH_FILTER,   // State untuk membaca TID menggunakan EPC yang sudah diketahui sebagai filter
+    // READING_EPC_FOR_CONFIRMATION, // Bisa dipertimbangkan jika ada alur retry spesifik, untuk sekarang kita coba sederhanakan
     EPC_CONFIRMED_AWAITING_WRITE,
     WRITING_EPC,
     SAVING_TO_DB,
@@ -38,9 +35,9 @@ enum class TaggingState {
 }
 
 class BookTaggingViewModel(
-    private val application: Application, // Bisa digunakan jika perlu context
+    private val application: Application,
     private val bookRepository: BookRepository,
-    private val sdkManager: ChainwaySDKManager // Diinjeksi, pastikan Factory Anda benar
+    private val sdkManager: ChainwaySDKManager
 ) : ViewModel() {
 
     private val _taggingState = MutableLiveData<TaggingState>(TaggingState.IDLE)
@@ -62,8 +59,8 @@ class BookTaggingViewModel(
     val isLoading: LiveData<Boolean> = _isLoading
 
     private var targetEpcHexToWrite: String? = null
-    private var currentTidReadFromTag: String? = null
-    private var currentEpcReadFromTagForConfirmation: String? = null // Simpan EPC yang dibaca untuk konfirmasi
+    private var currentTidReadFromTag: String? = null // TID yang berhasil dibaca dari tag
+    private var currentEpcReadFromTagForConfirmation: String? = null // EPC yang berhasil dibaca dari tag (EPC awal)
 
     private var sdkOperationJob: Job? = null
 
@@ -78,95 +75,119 @@ class BookTaggingViewModel(
     }
 
     private fun setupSdkListeners() {
+        // Di dalam setupSdkListeners()
         sdkManager.onBarcodeScanned = barScanned@{ barcodeData ->
-            if (_isLoading.value == true || _taggingState.value !in listOf(
-                    TaggingState.IDLE,
-                    TaggingState.PROCESS_SUCCESS,
-                    TaggingState.PROCESS_FAILED,
-                    TaggingState.ERROR_BOOK_NOT_FOUND,
-                    TaggingState.ERROR_SDK // Izinkan scan baru setelah error SDK
-                )) {
-                _statusMessage.postValue("Proses lain sedang berjalan. Harap tunggu atau batalkan.")
+            Log.d(TAG, "VIEWMODEL CB: onBarcodeScanned RECEIVED: $barcodeData. Current isLoading: ${_isLoading.value}, Current TaggingState: ${_taggingState.value}")
+
+            // Kondisi utama: apakah aplikasi siap menerima input barcode baru?
+            val canProcessBarcode = _taggingState.value in listOf(
+                TaggingState.IDLE,
+                TaggingState.PROCESS_SUCCESS,
+                TaggingState.PROCESS_FAILED,
+                TaggingState.ERROR_BOOK_NOT_FOUND,
+                TaggingState.ERROR_SDK,
+                TaggingState.ERROR_CONVERSION // Tambahkan jika relevan untuk bisa scan ulang
+            )
+
+            // Pengecekan isLoading mungkin lebih relevan untuk operasi yang *sedang berjalan aktif*
+            // seperti pembacaan RFID atau penulisan. Untuk barcode scan, kita mungkin ingin
+            // mengizinkannya jika state_nya valid, lalu searchBookByItemCode akan set isLoading-nya sendiri.
+            if (!canProcessBarcode) {
+                _statusMessage.postValue("Proses lain sedang berjalan atau state tidak valid. Harap tunggu atau batalkan.")
+                Log.w(TAG, "Barcode scan ($barcodeData) ignored due to state: ${_taggingState.value} or loading: ${_isLoading.value}")
+                // Jika Anda menghentikan scan barcode di SDK Manager setelah satu kali pindaian,
+                // tidak perlu stop di sini. Jika scan barcode kontinu, mungkin perlu:
+                // sdkManager.stopBarcodeScan()
                 return@barScanned
             }
-            _statusMessage.postValue("Barcode discan: $barcodeData")
+
+            // Jika sampai di sini, kita siap memproses barcode.
+            // `searchBookByItemCode` akan mengatur _isLoading dan _taggingState yang sesuai.
+            _statusMessage.postValue("Barcode discan: $barcodeData") // Atau pindahkan ini ke dalam searchBookByItemCode
             searchBookByItemCode(barcodeData)
         }
 
-        sdkManager.onTagReadTidSuccess = { tid, epcCurrentlyOnTag ->
-            sdkOperationJob?.cancel()
-            if (_taggingState.value == TaggingState.READING_TID) {
-                Log.i(TAG, "SDK CB: TID Read Success. TID=$tid, EPC on Tag (if read with TID)='$epcCurrentlyOnTag'")
-                currentTidReadFromTag = tid
-                _displayedTid.postValue(tid)
 
-                // Jika EPC juga terbaca bersamaan dengan TID (misalnya dari inventorySingleTag),
-                // kita bisa langsung gunakan itu untuk konfirmasi.
-                if (!epcCurrentlyOnTag.isNullOrBlank()) {
-                    currentEpcReadFromTagForConfirmation = epcCurrentlyOnTag
-                    _displayedEpc.postValue(epcCurrentlyOnTag)
-                    promptUserForWriteConfirmation(tid, epcCurrentlyOnTag)
-                } else {
-                    // Jika hanya TID yang didapat, lanjutkan ke pembacaan EPC terpisah
-                    initiateEpcReadForConfirmation(tid)
-                }
-            } else {
-                Log.w(TAG, "SDK CB: onTagReadTidSuccess received in unexpected state: ${_taggingState.value}")
-            }
-        }
-
-        sdkManager.onTagReadTidFailed = { error ->
+        // Callback setelah membaca EPC awal (dari readSingleUhfTagEpcNearby)
+        sdkManager.onSingleUhfTagEpcRead = onSingleUhfTagEpcRead@{ epcRead, tidAssociatedWithEpc ->
             sdkOperationJob?.cancel()
-            if (_taggingState.value == TaggingState.READING_TID) {
-                onErrorOccurred("Gagal membaca TID: $error", TaggingState.PROCESS_FAILED)
-            } else {
-                Log.w(TAG, "SDK CB: onTagReadTidFailed received in unexpected state: ${_taggingState.value}")
-            }
-        }
 
-        // Callback jika SDK berhasil membaca EPC tunggal (untuk konfirmasi setelah TID atau jika TID gagal dibaca bersamaan)
-        sdkManager.onSingleUhfTagEpcRead = onSingleUhfTagEpcRead@{ epcRead, tidAssociated -> // Label eksplisit DIBUAT di sini
-            sdkOperationJob?.cancel()
-            if (_taggingState.value == TaggingState.READING_EPC_FOR_CONFIRMATION) {
-                Log.i(TAG, "SDK CB: Single EPC Read Success (for confirmation). EPC='$epcRead'. TID previously read: '$currentTidReadFromTag'. TID with this EPC read: '$tidAssociated'")
+            if (_taggingState.value == TaggingState.READING_INITIAL_EPC) {
+                Log.i(TAG, "SDK CB: Initial EPC Read Success. EPC='$epcRead'. TID (jika ada dari EPC read)='$tidAssociatedWithEpc'")
                 _displayedEpc.postValue(epcRead)
-                currentEpcReadFromTagForConfirmation = epcRead
+                currentEpcReadFromTagForConfirmation = epcRead // Simpan EPC ini sebagai EPC yang ada di tag
 
-                val tidForPrompt = currentTidReadFromTag
-                if (tidForPrompt == null) {
-                    Log.e(TAG, "TID tidak tersedia saat EPC dikonfirmasi. Ini seharusnya tidak terjadi.")
-                    onErrorOccurred("Kesalahan internal: TID tidak ditemukan untuk konfirmasi.", TaggingState.PROCESS_FAILED)
-                    return@onSingleUhfTagEpcRead // Sekarang label ini VALID
+                if (epcRead.isNotBlank()) {
+                    // Lanjutkan membaca TID menggunakan EPC ini sebagai filter
+                    initiateTidReadWithFilter(epcRead)
+                } else {
+                    onErrorOccurred("EPC awal yang dibaca kosong.", TaggingState.PROCESS_FAILED)
                 }
-                promptUserForWriteConfirmation(tidForPrompt, epcRead)
-            } else {
+            }
+            // else if (_taggingState.value == TaggingState.READING_EPC_FOR_CONFIRMATION) {
+            // Logika ini mungkin tidak lagi sentral jika alur utama sudah mencakup konfirmasi EPC
+            // }
+            else {
                 Log.w(TAG, "SDK CB: onSingleUhfTagEpcRead received in unexpected state: ${_taggingState.value}")
             }
         }
-        // Callback jika SDK GAGAL membaca EPC tunggal (untuk konfirmasi)
-        sdkManager.onSingleUhfTagReadFailed = { error -> // Callback ini perlu ada di SDKManager
+
+        // Callback jika GAGAL membaca EPC awal
+        sdkManager.onSingleUhfTagReadFailed = { error ->
             sdkOperationJob?.cancel()
-            if (_taggingState.value == TaggingState.READING_EPC_FOR_CONFIRMATION) {
-                onErrorOccurred("Gagal membaca EPC untuk konfirmasi: $error", TaggingState.PROCESS_FAILED)
-            } else {
+            if (_taggingState.value == TaggingState.READING_INITIAL_EPC) {
+                onErrorOccurred("Gagal membaca EPC awal dari tag: $error", TaggingState.PROCESS_FAILED)
+            }
+            // else if (_taggingState.value == TaggingState.READING_EPC_FOR_CONFIRMATION) { ... }
+            else {
                 Log.w(TAG, "SDK CB: onSingleUhfTagReadFailed received in unexpected state: ${_taggingState.value}")
             }
         }
 
+        // Callback setelah membaca TID dengan filter EPC (dari readTidUsingEpcFilter)
+        sdkManager.onTagReadTidSuccess = onTagReadTidSuccess@{ tid, epcUsedAsFilter ->
+            sdkOperationJob?.cancel()
+            if (_taggingState.value == TaggingState.READING_TID_WITH_FILTER) {
+                Log.i(TAG, "SDK CB: Filtered TID Read Success. TID=$tid, Filtered using EPC='$epcUsedAsFilter'")
+                currentTidReadFromTag = tid
+                _displayedTid.postValue(tid)
+
+                val epcActuallyOnTag = currentEpcReadFromTagForConfirmation // Ini adalah EPC yang dibaca di tahap READING_INITIAL_EPC
+                if (epcActuallyOnTag.isNullOrBlank()) {
+                    onErrorOccurred("Kesalahan internal: EPC awal tidak ditemukan untuk konfirmasi.", TaggingState.PROCESS_FAILED)
+                    return@onTagReadTidSuccess
+                }
+
+                _isLoading.postValue(false)
+                promptUserForWriteConfirmation(tid, epcActuallyOnTag)
+            } else {
+                Log.w(TAG, "SDK CB: onTagReadTidSuccess (filtered) received in unexpected state: ${_taggingState.value}")
+            }
+        }
+
+        // Callback jika GAGAL membaca TID dengan filter EPC
+        sdkManager.onTagReadTidFailed = { error ->
+            sdkOperationJob?.cancel()
+            if (_taggingState.value == TaggingState.READING_TID_WITH_FILTER) {
+                onErrorOccurred("Gagal membaca TID (filter EPC): $error", TaggingState.PROCESS_FAILED)
+            } else {
+                Log.w(TAG, "SDK CB: onTagReadTidFailed (filtered) received in unexpected state: ${_taggingState.value}")
+            }
+        }
 
         sdkManager.onTagWriteSuccess = { writtenEpc ->
             sdkOperationJob?.cancel()
             if (_taggingState.value == TaggingState.WRITING_EPC) {
                 Log.i(TAG, "SDK CB: Tag Write Success. Written EPC: $writtenEpc. Associated TID: $currentTidReadFromTag")
-                _displayedEpc.postValue(writtenEpc)
+                _displayedEpc.postValue(writtenEpc) // Update displayed EPC dengan yang baru ditulis
 
                 val bookToUpdate = _currentBook.value
-                val tidToSave = currentTidReadFromTag // TID yang dibaca SEBELUM penulisan
+                val tidToSave = currentTidReadFromTag
                 if (bookToUpdate != null && tidToSave != null) {
                     saveRfidDataToDatabase(bookToUpdate, writtenEpc, tidToSave)
                 } else {
-                    Log.e(TAG, "onTagWriteSuccess: Data tidak lengkap. Book: $bookToUpdate, TID: $tidToSave")
-                    onErrorOccurred("Data buku atau TID awal tidak lengkap untuk menyimpan.", TaggingState.PROCESS_FAILED)
+                    Log.e(TAG, "onTagWriteSuccess: Data tidak lengkap untuk menyimpan. Book: $bookToUpdate, TID: $tidToSave")
+                    onErrorOccurred("Data buku atau TID tidak lengkap untuk penyimpanan.", TaggingState.PROCESS_FAILED)
                 }
             } else {
                 Log.w(TAG, "SDK CB: onTagWriteSuccess received in unexpected state: ${_taggingState.value}")
@@ -176,7 +197,7 @@ class BookTaggingViewModel(
         sdkManager.onTagWriteFailed = { error ->
             sdkOperationJob?.cancel()
             if (_taggingState.value == TaggingState.WRITING_EPC) {
-                onErrorOccurred("Gagal menulis EPC: $error", TaggingState.PROCESS_FAILED)
+                onErrorOccurred("Gagal menulis EPC ke tag: $error", TaggingState.PROCESS_FAILED)
             } else {
                 Log.w(TAG, "SDK CB: onTagWriteFailed received in unexpected state: ${_taggingState.value}")
             }
@@ -185,43 +206,41 @@ class BookTaggingViewModel(
         sdkManager.onError = { errorMessage ->
             sdkOperationJob?.cancel()
             val currentState = _taggingState.value
+            // Tentukan state berikutnya berdasarkan state saat ini jika terjadi error SDK umum
             val nextStateOnError = when (currentState) {
-                TaggingState.READING_TID,
-                TaggingState.READING_EPC_FOR_CONFIRMATION,
+                TaggingState.READING_INITIAL_EPC,
+                TaggingState.READING_TID_WITH_FILTER,
                 TaggingState.WRITING_EPC,
-                TaggingState.BOOK_SEARCHING, // Jika error SDK saat mencari
-                TaggingState.SAVING_TO_DB -> TaggingState.PROCESS_FAILED // Jika error SDK saat operasi krusial
+                TaggingState.BOOK_SEARCHING,
+                TaggingState.SAVING_TO_DB -> TaggingState.PROCESS_FAILED
                 else -> TaggingState.ERROR_SDK
             }
-            // Hanya panggil onErrorOccurred jika state saat ini bukan sudah error atau failed
-            // untuk menghindari pembaruan status berulang yang tidak perlu.
             if (currentState != TaggingState.PROCESS_FAILED && currentState != TaggingState.ERROR_SDK) {
                 onErrorOccurred("SDK Error: $errorMessage", nextStateOnError)
             } else {
-                Log.w(TAG, "SDK onError: Error '$errorMessage' diterima, tapi state sudah $currentState. Tidak mengubah state.")
+                Log.w(TAG, "SDK onError: Error '$errorMessage' diterima, tapi state sudah $currentState.")
                 _statusMessage.postValue("SDK Error: $errorMessage (State: $currentState)")
             }
         }
 
         sdkManager.onUhfOperationStopped = {
             Log.d(TAG, "SDK CB: onUhfOperationStopped. Current state: ${_taggingState.value}")
-            // Jika operasi dihentikan oleh SDK atau secara eksternal,
-            // dan kita sedang dalam proses aktif, anggap sebagai kegagalan atau timeout.
-            if (_taggingState.value in listOf(TaggingState.READING_TID, TaggingState.READING_EPC_FOR_CONFIRMATION, TaggingState.WRITING_EPC)) {
-                if (_isLoading.value == true) { // Jika kita masih mengharapkan operasi
-                    Log.w(TAG, "Operasi UHF dihentikan saat ViewModel masih menunggu hasil.")
-                    // onErrorOccurred("Operasi UHF dihentikan secara tak terduga.", TaggingState.PROCESS_FAILED)
-                    // Hati-hati, ini bisa bertabrakan dengan timeout handling.
-                    // Timeout akan memanggil stopUhfOperation juga.
-                    // Lebih baik biarkan timeout yang menangani atau pastikan job dibatalkan.
+            if (_taggingState.value in listOf(
+                    TaggingState.READING_INITIAL_EPC,
+                    TaggingState.READING_TID_WITH_FILTER,
+                    TaggingState.WRITING_EPC)) {
+                if (_isLoading.value == true) {
+                    Log.w(TAG, "Operasi UHF dihentikan saat ViewModel masih menunggu hasil (state: ${_taggingState.value}).")
+                    // Biarkan timeout handling yang ada di fungsi initiateXXX yang meng-cover ini,
+                    // karena stopUhfOperation juga dipanggil oleh onErrorOccurred.
                 }
             }
         }
     }
 
     private fun onErrorOccurred(message: String, nextState: TaggingState = TaggingState.PROCESS_FAILED) {
-        sdkOperationJob?.cancel() // Pastikan job dibatalkan saat error
-        sdkManager.stopUhfOperation() // Coba hentikan operasi SDK jika ada yang aktif
+        sdkOperationJob?.cancel()
+        sdkManager.stopUhfOperation()
 
         _isLoading.postValue(false)
         _statusMessage.postValue(message)
@@ -230,11 +249,7 @@ class BookTaggingViewModel(
     }
 
     fun searchBookByItemCode(itemCode: String) {
-        if (itemCode.isBlank()) {
-            _statusMessage.value = "Kode item tidak boleh kosong."
-            _taggingState.value = TaggingState.IDLE
-            return
-        }
+        if (itemCode.isBlank()) { /* ... */ return }
         clearLocalCacheBeforeSearch()
         _taggingState.value = TaggingState.BOOK_SEARCHING
         _isLoading.value = true
@@ -247,139 +262,111 @@ class BookTaggingViewModel(
                 if (book != null) {
                     targetEpcHexToWrite = convertItemCodeToEpcHex(itemCode)
                     if (targetEpcHexToWrite == null) {
-                        onErrorOccurred("Gagal mengkonversi kode item ke format EPC. Periksa format kode item.", TaggingState.ERROR_CONVERSION)
+                        onErrorOccurred("Gagal konversi kode item ke EPC.", TaggingState.ERROR_CONVERSION)
                     } else {
                         _statusMessage.postValue("Buku '${book.title}' ditemukan. Target EPC: $targetEpcHexToWrite")
-                        Log.d(TAG, "Buku ditemukan: ${book.title}. Target EPC untuk ditulis: $targetEpcHexToWrite")
                         if (book.rfidTagHex.isNullOrBlank() || book.pairingStatus == PairingStatus.NOT_PAIRED || book.pairingStatus == PairingStatus.PAIRING_FAILED) {
                             _taggingState.postValue(TaggingState.BOOK_FOUND_UNTAGGED)
-                            _statusMessage.postValue("Buku belum memiliki RFID. Klik 'Mulai Proses Tag'.")
+                            _statusMessage.postValue("Buku belum di-tag. Klik 'Mulai Proses Tag'.")
                         } else {
                             _taggingState.postValue(TaggingState.BOOK_FOUND_ALREADY_TAGGED)
-                            _statusMessage.postValue("Buku sudah memiliki RFID (${book.rfidTagHex}). Status: ${book.pairingStatus}. Klik 'Proses Ulang Tag' untuk menimpa.")
+                            _statusMessage.postValue("Buku sudah di-tag (${book.rfidTagHex}). Klik 'Proses Ulang Tag'.")
                         }
                     }
                 } else {
-                    _taggingState.postValue(TaggingState.ERROR_BOOK_NOT_FOUND)
-                    _statusMessage.postValue("Buku dengan kode item '$itemCode' tidak ditemukan.")
+                    onErrorOccurred("Buku dengan kode item '$itemCode' tidak ditemukan.", TaggingState.ERROR_BOOK_NOT_FOUND)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error mencari buku '$itemCode': ${e.message}", e)
-                onErrorOccurred("Error database saat mencari buku: ${e.message}", TaggingState.PROCESS_FAILED)
+                onErrorOccurred("Error database: ${e.message}", TaggingState.PROCESS_FAILED)
             } finally {
                 _isLoading.postValue(false)
             }
         }
     }
 
-    // Dipanggil dari UI ketika pengguna ingin memulai seluruh proses (baca TID -> konfirmasi EPC -> tulis)
     fun userRequestsStartTaggingProcess() {
         val book = _currentBook.value
         if (book == null || targetEpcHexToWrite == null) {
-            onErrorOccurred("Buku atau target EPC belum disiapkan.", TaggingState.IDLE)
+            onErrorOccurred("Buku atau target EPC belum siap.", TaggingState.IDLE)
             return
         }
         if (_taggingState.value !in listOf(TaggingState.BOOK_FOUND_UNTAGGED, TaggingState.BOOK_FOUND_ALREADY_TAGGED)) {
-            Log.w(TAG, "userRequestsStartTaggingProcess dipanggil pada state yang tidak tepat: ${_taggingState.value}")
-            _statusMessage.postValue("State tidak valid untuk memulai proses tagging.")
+            _statusMessage.postValue("State tidak valid untuk memulai.")
             return
         }
-        if (!sdkManager.isDeviceReady("uhf")) {
-            onErrorOccurred("Reader UHF tidak siap atau tidak terhubung.", TaggingState.ERROR_SDK)
-            return
-        }
-        if (sdkManager.isUhfDeviceScanning) {
-            _statusMessage.postValue("Reader sedang sibuk. Hentikan operasi UHF lain dahulu.")
-            return
-        }
-
-        // Langsung mulai pembacaan TID
-        initiateTidRead()
-    }
-
-
-    private fun initiateTidRead() {
-        // State AWAITING_TAG_FOR_TID_READ mungkin tidak lagi diperlukan jika langsung scan
-        // if (_taggingState.value != TaggingState.AWAITING_TAG_FOR_TID_READ && _taggingState.value != TaggingState.BOOK_FOUND_UNTAGGED) {
-        //     Log.w(TAG, "initiateTidRead dipanggil pada state yang tidak tepat: ${_taggingState.value}")
-        //     return
-        // }
         if (!sdkManager.isDeviceReady("uhf")) {
             onErrorOccurred("Reader UHF tidak siap.", TaggingState.ERROR_SDK)
             return
         }
+        if (sdkManager.isUhfDeviceScanning || sdkManager.isUhfRadarActive) { // Cek juga radar
+            _statusMessage.postValue("Reader sedang sibuk. Hentikan operasi UHF lain.")
+            return
+        }
+        initiateInitialEpcRead() // Mulai dengan membaca EPC awal
+    }
 
+    private fun initiateInitialEpcRead() {
+        if (!sdkManager.isDeviceReady("uhf")) {
+            onErrorOccurred("Reader UHF tidak siap.", TaggingState.ERROR_SDK)
+            return
+        }
         _isLoading.value = true
         currentTidReadFromTag = null
         currentEpcReadFromTagForConfirmation = null
         _displayedTid.value = null
-        _displayedEpc.value = null
-        _taggingState.value = TaggingState.READING_TID
-        _statusMessage.value = "Dekatkan tag RFID ke reader untuk dibaca TID & EPC awalnya..."
+        _displayedEpc.value = null // EPC akan diisi oleh callback
+        _taggingState.value = TaggingState.READING_INITIAL_EPC
+        _statusMessage.value = "Dekatkan tag ke reader untuk dibaca EPC awalnya..."
 
         sdkOperationJob = viewModelScope.launch {
-            // Kita akan menggunakan readTidFromNearbyTag yang di SDKManager-nya
-            // memanggil inventorySingleTag() yang mengembalikan TID dan EPC jika ada.
-            sdkManager.readTidFromNearbyTag() // Ini akan memicu onTagReadTidSuccess atau onTagReadTidFailed
+            sdkManager.readSingleUhfTagEpcNearby() // Akan memicu onSingleUhfTagEpcRead atau onSingleUhfTagReadFailed
 
-            // Loop untuk menunggu callback mengubah state atau timeout
             val success = withTimeoutOrNull(SDK_OPERATION_TIMEOUT_MS) {
-                while (isActive && _taggingState.value == TaggingState.READING_TID) {
-                    delay(100) // Cek status secara periodik
+                while (isActive && _taggingState.value == TaggingState.READING_INITIAL_EPC) {
+                    delay(100)
                 }
-                _taggingState.value != TaggingState.READING_TID // Berhasil jika state sudah berubah
+                _taggingState.value != TaggingState.READING_INITIAL_EPC
             }
-
-            if (success == null && _taggingState.value == TaggingState.READING_TID) { // Timeout
-                Log.w(TAG, "Timeout saat menunggu hasil pembacaan TID.")
-                onErrorOccurred("Timeout saat membaca TID.", TaggingState.PROCESS_FAILED)
-            } else if (success == false && _taggingState.value == TaggingState.READING_TID) { // Loop selesai tapi state belum berubah
-                Log.w(TAG, "Loop pembacaan TID selesai tapi state belum maju oleh callback.")
-                // Biasanya error sudah ditangani oleh onTagReadTidFailed jika itu penyebabnya.
-                // Jika tidak, ini kondisi yang aneh, anggap gagal.
-                onErrorOccurred("Gagal membaca TID (operasi tidak selesai).", TaggingState.PROCESS_FAILED)
+            if (success == null && _taggingState.value == TaggingState.READING_INITIAL_EPC) {
+                onErrorOccurred("Timeout membaca EPC awal.", TaggingState.PROCESS_FAILED)
+            } else if (success == false && _taggingState.value == TaggingState.READING_INITIAL_EPC) {
+                onErrorOccurred("Gagal membaca EPC awal (operasi tak selesai).", TaggingState.PROCESS_FAILED)
             }
-            // isLoading akan di-set false oleh onErrorOccurred atau oleh alur sukses berikutnya
         }
     }
 
-    private fun initiateEpcReadForConfirmation(tidJustRead: String) {
-        // Fungsi ini mungkin tidak lagi diperlukan jika onTagReadTidSuccess sudah mendapatkan EPC
-        // bersamaan dengan TID. Namun, kita bisa tetap memilikinya sebagai fallback atau
-        // jika kita ingin memastikan EPC dibaca ulang dengan filter TID (jika SDK mendukung).
-
+    private fun initiateTidReadWithFilter(epcToFilter: String) {
         if (!sdkManager.isDeviceReady("uhf")) {
             onErrorOccurred("Reader UHF tidak siap.", TaggingState.ERROR_SDK)
             return
         }
         _isLoading.value = true
-        _taggingState.value = TaggingState.READING_EPC_FOR_CONFIRMATION
-        _statusMessage.value = "Membaca EPC dari tag (TID: $tidJustRead) untuk konfirmasi..."
+        // _displayedTid akan diisi oleh callback
+        _taggingState.value = TaggingState.READING_TID_WITH_FILTER
+        _statusMessage.value = "Membaca TID dari tag (EPC: $epcToFilter)..."
 
         sdkOperationJob = viewModelScope.launch {
-            // Gunakan readSingleUhfTagEpcNearby. Idealnya, jika kita hanya ingin membaca tag yang TID-nya
-            // baru saja kita baca, tag tersebut masih yang paling dekat.
-            // Filter by TID di SDK Manager saat ini tidak ada untuk pembacaan EPC saja.
-            sdkManager.readSingleUhfTagEpcNearby() // Ini akan memicu onSingleUhfTagEpcRead atau onSingleUhfTagReadFailed
+            // Asumsi Anda punya fungsi ini di SDKManager yang memanggil readData dengan filter EPC untuk TID Bank
+            sdkManager.readTidUsingEpcFilter(epcToFilterHex = epcToFilter)
 
             val success = withTimeoutOrNull(SDK_OPERATION_TIMEOUT_MS) {
-                while (isActive && _taggingState.value == TaggingState.READING_EPC_FOR_CONFIRMATION) {
+                while (isActive && _taggingState.value == TaggingState.READING_TID_WITH_FILTER) {
                     delay(100)
                 }
-                _taggingState.value != TaggingState.READING_EPC_FOR_CONFIRMATION
+                _taggingState.value != TaggingState.READING_TID_WITH_FILTER
             }
-
-            if (success == null && _taggingState.value == TaggingState.READING_EPC_FOR_CONFIRMATION) {
-                Log.w(TAG, "Timeout saat menunggu hasil pembacaan EPC untuk konfirmasi.")
-                onErrorOccurred("Timeout saat membaca EPC untuk konfirmasi.", TaggingState.PROCESS_FAILED)
-            } else if (success == false && _taggingState.value == TaggingState.READING_EPC_FOR_CONFIRMATION) {
-                Log.w(TAG, "Loop pembacaan EPC selesai tapi state belum maju oleh callback.")
-                onErrorOccurred("Gagal membaca EPC untuk konfirmasi (operasi tidak selesai).", TaggingState.PROCESS_FAILED)
+            if (success == null && _taggingState.value == TaggingState.READING_TID_WITH_FILTER) {
+                onErrorOccurred("Timeout membaca TID (filter).", TaggingState.PROCESS_FAILED)
+            } else if (success == false && _taggingState.value == TaggingState.READING_TID_WITH_FILTER) {
+                onErrorOccurred("Gagal membaca TID (filter, operasi tak selesai).", TaggingState.PROCESS_FAILED)
             }
         }
     }
 
-    private fun promptUserForWriteConfirmation(tidFromTag: String, currentEpcOnTag: String) {
+    // Fungsi initiateTidRead() LAMA (yang menggunakan readTidFromNearbyTag) DIHAPUS atau TIDAK DIGUNAKAN LAGI untuk alur utama.
+    // Fungsi initiateEpcReadForConfirmation() LAMA juga mungkin tidak lagi sentral.
+
+    private fun promptUserForWriteConfirmation(tidFromTag: String, epcCurrentlyOnTag: String) {
         val book = _currentBook.value
         val targetEpc = targetEpcHexToWrite
         if (book == null || targetEpc == null) {
@@ -387,8 +374,10 @@ class BookTaggingViewModel(
             return
         }
 
-        // Simpan EPC yang baru saja dibaca untuk konfirmasi
-        currentEpcReadFromTagForConfirmation = currentEpcOnTag
+        // currentEpcReadFromTagForConfirmation sudah di-set saat EPC awal dibaca.
+        // epcCurrentlyOnTag yang diterima di sini adalah EPC yang sama.
+        // _displayedEpc juga sudah diupdate dengan epcCurrentlyOnTag.
+        // _displayedTid sudah diupdate dengan tidFromTag.
 
         _taggingState.postValue(TaggingState.EPC_CONFIRMED_AWAITING_WRITE)
         val message = StringBuilder()
@@ -397,47 +386,42 @@ class BookTaggingViewModel(
         message.append("Buku: ${book.title} (IC: ${book.itemCode})\n\n")
         message.append("Tag RFID Terdeteksi:\n")
         message.append("  TID: $tidFromTag\n")
-        message.append("  EPC Saat Ini: $currentEpcOnTag\n\n")
+        message.append("  EPC Saat Ini di Tag: $epcCurrentlyOnTag\n\n") // Ini adalah currentEpcReadFromTagForConfirmation
         message.append("Akan Ditulis dengan EPC Baru:\n")
-        message.append("  $targetEpc\n")
+        message.append("  $targetEpc\n") // Ini adalah targetEpcHexToWrite
         message.append("-------------------------------------\n")
 
-        if (currentEpcOnTag.isNotBlank() && currentEpcOnTag.equals(targetEpc, ignoreCase = true)) {
-            message.append("PERHATIAN: EPC saat ini di tag SAMA dengan EPC target. Apakah Anda tetap ingin menulis ulang?\n\n")
-        } else if (currentEpcOnTag.isNotBlank() && !book.rfidTagHex.isNullOrBlank() && !currentEpcOnTag.equals(book.rfidTagHex, ignoreCase = true)) {
-            message.append("PERHATIAN: EPC saat ini di tag ($currentEpcOnTag) BERBEDA dengan EPC yang tercatat di database buku (${book.rfidTagHex}). Ini mungkin tag yang salah.\n\n")
-        } else if (currentEpcOnTag.isBlank() && !book.rfidTagHex.isNullOrBlank()) {
-            message.append("INFO: Tag yang terdeteksi tidak memiliki EPC (mungkin baru), buku ini sudah punya data EPC (${book.rfidTagHex}) di DB.\n\n")
+        if (epcCurrentlyOnTag.isNotBlank() && epcCurrentlyOnTag.equals(targetEpc, ignoreCase = true)) {
+            message.append("PERHATIAN: EPC tag SAMA dengan target. Tetap tulis ulang?\n\n")
+        } else if (epcCurrentlyOnTag.isNotBlank() && !book.rfidTagHex.isNullOrBlank() && !epcCurrentlyOnTag.equals(book.rfidTagHex, ignoreCase = true)) {
+            message.append("PERHATIAN: EPC tag ($epcCurrentlyOnTag) BEDA dengan di DB (${book.rfidTagHex}). Tag salah?\n\n")
+        } else if (epcCurrentlyOnTag.isBlank() && !book.rfidTagHex.isNullOrBlank()) {
+            message.append("INFO: Tag tidak ber-EPC, tapi buku punya data EPC (${book.rfidTagHex}) di DB.\n\n")
         }
-
-
         message.append("Lanjutkan Penulisan?")
         _statusMessage.postValue(message.toString())
+        _isLoading.postValue(false) // Hentikan loading setelah info siap ditampilkan
     }
 
     fun userConfirmsWriteOperation() {
         if (_taggingState.value != TaggingState.EPC_CONFIRMED_AWAITING_WRITE) {
-            Log.w(TAG, "userConfirmsWriteOperation dipanggil pada state yang tidak tepat: ${_taggingState.value}")
             _statusMessage.postValue("State tidak valid untuk memulai penulisan.")
             return
         }
         val finalEpcToWrite = targetEpcHexToWrite
-        val tidOfTag = currentTidReadFromTag // TID yang sudah dikonfirmasi
-        // val epcCurrentlyOnTag = currentEpcReadFromTagForConfirmation // EPC yang ada di tag sebelum ditulis
+        val tidOfTag = currentTidReadFromTag
 
         if (finalEpcToWrite == null || tidOfTag == null) {
             onErrorOccurred("EPC target atau TID tag belum siap untuk penulisan.", TaggingState.PROCESS_FAILED)
             return
         }
-
-        Log.i(TAG, "Pengguna mengonfirmasi penulisan. Target EPC: $finalEpcToWrite untuk tag dengan TID: $tidOfTag")
-        initiateWriteEpcToTag(finalEpcToWrite, tidOfTag /*, epcCurrentlyOnTag */)
+        Log.i(TAG, "Pengguna mengonfirmasi penulisan. Target EPC: $finalEpcToWrite untuk tag TID: $tidOfTag")
+        // Untuk currentEpcFilterOnTag, kita bisa gunakan currentEpcReadFromTagForConfirmation
+        // jika SDK Manager Anda memerlukan EPC lama sebagai filter saat menulis (opsional).
+        initiateWriteEpcToTag(finalEpcToWrite, tidOfTag, currentEpcReadFromTagForConfirmation)
     }
 
-    // PENTING: Jika SDK memerlukan filter EPC lama untuk menulis, Anda perlu menyediakannya.
-    // ChainwaySDKManager.writeUhfTag saat ini tidak menggunakan filter EPC lama,
-    // jadi parameter currentEpcFilterOnTag mungkin tidak diperlukan untuk SDKManager.
-    private fun initiateWriteEpcToTag(epcHexTarget: String, tidOfTagToVerify: String, currentEpcFilterOnTag: String? = null) {
+    private fun initiateWriteEpcToTag(epcHexTarget: String, tidOfTagToVerify: String, currentEpcFilterOnTag: String?) {
         if (!sdkManager.isDeviceReady("uhf")) {
             onErrorOccurred("Reader UHF tidak siap.", TaggingState.ERROR_SDK)
             return
@@ -445,13 +429,12 @@ class BookTaggingViewModel(
         _isLoading.value = true
         _taggingState.value = TaggingState.WRITING_EPC
         _statusMessage.value = "Menulis EPC: $epcHexTarget ke tag (TID: $tidOfTagToVerify)..."
-        _displayedEpc.value = null
+        _displayedEpc.value = epcHexTarget // Tampilkan EPC yang sedang ditulis
 
         sdkOperationJob = viewModelScope.launch {
-            // ChainwaySDKManager.writeUhfTag hanya butuh epcDataHex dan password (default)
-            // Tidak menggunakan filter EPC lama atau TID untuk menargetkan penulisan.
-            // Penulisan terjadi ke tag terdekat. Ini adalah risiko jika tag bergeser.
-            // Idealnya, SDK punya cara menulis ke tag dengan TID tertentu.
+            // Jika SDKManager.writeUhfTag memerlukan filter EPC lama:
+            // sdkManager.writeUhfTag(epcDataHex = epcHexTarget, oldEpcFilterHex = currentEpcFilterOnTag)
+            // Jika tidak, cukup:
             sdkManager.writeUhfTag(epcDataHex = epcHexTarget)
 
             val success = withTimeoutOrNull(SDK_OPERATION_TIMEOUT_MS) {
@@ -460,22 +443,17 @@ class BookTaggingViewModel(
                 }
                 _taggingState.value != TaggingState.WRITING_EPC
             }
-
             if (success == null && _taggingState.value == TaggingState.WRITING_EPC) {
-                Log.w(TAG, "Timeout saat menunggu hasil penulisan EPC.")
                 onErrorOccurred("Timeout saat menulis EPC.", TaggingState.PROCESS_FAILED)
             } else if (success == false && _taggingState.value == TaggingState.WRITING_EPC) {
-                Log.w(TAG, "Loop penulisan EPC selesai tapi state belum maju oleh callback.")
-                onErrorOccurred("Gagal menulis EPC (operasi tidak selesai).", TaggingState.PROCESS_FAILED)
+                onErrorOccurred("Gagal menulis EPC (operasi tak selesai).", TaggingState.PROCESS_FAILED)
             }
-            // isLoading akan di-set false oleh onErrorOccurred atau oleh saveRfidDataToDatabase
         }
     }
 
-
     private fun saveRfidDataToDatabase(bookToUpdate: BookMaster, epcSuccessfullyWritten: String, tidAssociatedWithWrite: String) {
         _taggingState.value = TaggingState.SAVING_TO_DB
-        _statusMessage.value = "Menyimpan data pairing (EPC: $epcSuccessfullyWritten, TID: $tidAssociatedWithWrite) ke database..."
+        _statusMessage.value = "Menyimpan data (EPC: $epcSuccessfullyWritten, TID: $tidAssociatedWithWrite)..."
         _isLoading.value = true
 
         viewModelScope.launch {
@@ -483,53 +461,45 @@ class BookTaggingViewModel(
                 bookRepository.updateFullRfidDetailsForBook(
                     itemCode = bookToUpdate.itemCode,
                     newRfidTagHex = epcSuccessfullyWritten,
-                    newTid = tidAssociatedWithWrite, // TID yang dibaca dari tag yang baru saja ditulis
+                    newTid = tidAssociatedWithWrite,
                     newPairingStatus = PairingStatus.PAIRED_WRITE_SUCCESS,
                     pairingTimestamp = System.currentTimeMillis()
                 )
                 val updatedBook = bookRepository.getBookByItemCode(bookToUpdate.itemCode)
                 _currentBook.postValue(updatedBook)
                 _isLoading.postValue(false)
-                _statusMessage.postValue("Data RFID untuk buku '${updatedBook?.title ?: bookToUpdate.title}' berhasil disimpan!")
+                _statusMessage.postValue("Data RFID untuk '${updatedBook?.title ?: bookToUpdate.title}' berhasil disimpan!")
                 _taggingState.postValue(TaggingState.PROCESS_SUCCESS)
-                Log.i(TAG, "Data RFID disimpan: ItemCode=${bookToUpdate.itemCode}, EPC=$epcSuccessfullyWritten, TID=$tidAssociatedWithWrite")
-
             } catch (e: Exception) {
-                Log.e(TAG, "Error menyimpan data RFID ke DB untuk '${bookToUpdate.itemCode}': ${e.message}", e)
+                Log.e(TAG, "Error menyimpan data RFID ke DB: ${e.message}", e)
                 try {
-                    bookRepository.updateFullRfidDetailsForBook(
+                    bookRepository.updateFullRfidDetailsForBook( // Coba update status gagal
                         itemCode = bookToUpdate.itemCode,
-                        newRfidTagHex = epcSuccessfullyWritten,
-                        newTid = tidAssociatedWithWrite,
+                        newRfidTagHex = bookToUpdate.rfidTagHex, // Kembalikan ke EPC lama jika ada
+                        newTid = bookToUpdate.tid, // Kembalikan ke TID lama jika ada
                         newPairingStatus = PairingStatus.PAIRED_WRITE_FAILED,
                         pairingTimestamp = System.currentTimeMillis()
                     )
-                } catch (updateEx: Exception) {
-                    Log.e(TAG, "Gagal update status ke PAIRED_WRITE_FAILED: ${updateEx.message}")
-                }
-                onErrorOccurred("Gagal menyimpan ke database: ${e.message}", TaggingState.PROCESS_FAILED)
+                } catch (updateEx: Exception) { /* ... */ }
+                onErrorOccurred("Gagal menyimpan ke DB: ${e.message}", TaggingState.PROCESS_FAILED)
             }
         }
     }
 
     private fun convertItemCodeToEpcHex(itemCode: String): String? {
+        // ... (implementasi Anda sudah ada dan terlihat baik)
+        // Pastikan ini mengembalikan 24 karakter hex atau null
         try {
             if (itemCode.isBlank()) return null
             val sanitizedItemCode = itemCode.replace("[^a-zA-Z0-9]".toRegex(), "").uppercase()
             if (sanitizedItemCode.isEmpty()) return null
-
             val bytesToConvert = sanitizedItemCode.toByteArray(Charsets.US_ASCII).take(12)
             var initialHex = bytesToConvert.joinToString("") { String.format("%02X", it) }
-
             val targetHexLength = 24 // EPC-96
             if (initialHex.length > targetHexLength) {
                 initialHex = initialHex.substring(0, targetHexLength)
             }
-            // Pad dengan '0' di KANAN jika lebih pendek, bukan '00'
             val finalHex = initialHex.padEnd(targetHexLength, '0')
-
-
-            Log.d(TAG, "Konversi: ItemCode '$itemCode' -> Sanitized '$sanitizedItemCode' -> InitialHex '$initialHex' -> Final EPC HEX '$finalHex'")
             return if (finalHex.length == targetHexLength) finalHex else null
         } catch (e: Exception) {
             Log.e(TAG, "Error konversi itemCode '$itemCode' ke EPC hex: ${e.message}", e)
@@ -538,23 +508,35 @@ class BookTaggingViewModel(
     }
 
     fun triggerBarcodeScan() {
-        if (_isLoading.value == true || _taggingState.value !in listOf(
+        Log.d(TAG, "triggerBarcodeScan called. Current isLoading: ${isLoading.value}, Current TaggingState: ${taggingState.value}")
+
+        // Pengecekan state dasar sebelum mencoba mengaktifkan hardware
+        if (_taggingState.value !in listOf(
                 TaggingState.IDLE,
                 TaggingState.PROCESS_SUCCESS,
                 TaggingState.PROCESS_FAILED,
                 TaggingState.ERROR_BOOK_NOT_FOUND,
-                TaggingState.ERROR_SDK
+                TaggingState.ERROR_SDK,
+                TaggingState.ERROR_CONVERSION
             )) {
-            _statusMessage.postValue("Operasi lain sedang berjalan.")
+            _statusMessage.postValue("Tidak dapat memulai scan barcode, proses lain sedang berjalan.")
+            Log.w(TAG, "triggerBarcodeScan: Cannot start, operation already in progress or invalid state: ${_taggingState.value}")
             return
         }
+
         if (!sdkManager.isDeviceReady("barcode")) {
             _statusMessage.postValue("Scanner barcode tidak siap.")
+            Log.w(TAG, "triggerBarcodeScan: Barcode scanner not ready.")
             return
         }
+
+        // Tidak perlu set isLoading di sini, biarkan searchBookByItemCode yang mengaturnya.
+        // Tidak perlu mengubah _taggingState di sini, biarkan onBarcodeScanned yang mengaturnya.
         _statusMessage.postValue("Mengaktifkan scan barcode...")
-        sdkManager.startBarcodeScan()
+        Log.d(TAG, "Requesting SDK to start barcode scan.")
+        sdkManager.startBarcodeScan() // SDK akan memanggil onBarcodeScanned
     }
+
 
     private fun clearLocalCacheBeforeSearch() {
         _currentBook.value = null
@@ -566,52 +548,44 @@ class BookTaggingViewModel(
     }
 
     fun cancelCurrentOperation() {
+        // ... (implementasi Anda sudah ada dan terlihat baik)
         sdkOperationJob?.cancel()
         _isLoading.postValue(false)
-
-        // Hentikan operasi SDK yang mungkin berjalan
-        sdkManager.stopUhfOperation() // Ini akan menghentikan semua operasi UHF (inventory, read, write, radar)
+        sdkManager.stopUhfOperation()
         if (sdkManager.isBarcodeDeviceScanning) sdkManager.stopBarcodeScan()
 
         val bookCurrentlySelected = _currentBook.value != null
-        Log.i(TAG, "Operasi dibatalkan pengguna. State saat ini: ${_taggingState.value}. Buku dipilih: $bookCurrentlySelected")
+        Log.i(TAG, "Operasi dibatalkan pengguna. State: ${_taggingState.value}. Buku dipilih: $bookCurrentlySelected")
 
         if (bookCurrentlySelected && targetEpcHexToWrite != null) {
             val book = _currentBook.value!!
             if (book.rfidTagHex.isNullOrBlank() || book.pairingStatus == PairingStatus.NOT_PAIRED || book.pairingStatus == PairingStatus.PAIRING_FAILED) {
                 _taggingState.postValue(TaggingState.BOOK_FOUND_UNTAGGED)
-                _statusMessage.postValue("Operasi dibatalkan. Buku '${book.title}' siap untuk proses tagging baru.")
+                _statusMessage.postValue("Dibatalkan. Buku '${book.title}' siap ditag.")
             } else {
                 _taggingState.postValue(TaggingState.BOOK_FOUND_ALREADY_TAGGED)
-                _statusMessage.postValue("Operasi dibatalkan. Buku '${book.title}' sudah memiliki RFID.")
+                _statusMessage.postValue("Dibatalkan. Buku '${book.title}' sudah punya RFID.")
             }
         } else {
-            clearProcessAndPrepareForNext("Operasi dibatalkan. Silakan scan barcode buku.")
+            clearProcessAndPrepareForNext("Operasi dibatalkan. Scan barcode buku.")
         }
     }
 
     fun clearProcessAndPrepareForNext(resetMessage: String? = "Silakan scan barcode buku berikutnya.") {
+        // ... (implementasi Anda sudah ada)
         sdkOperationJob?.cancel()
         sdkManager.stopUhfOperation()
         if (sdkManager.isBarcodeDeviceScanning) sdkManager.stopBarcodeScan()
-
         clearLocalCacheBeforeSearch()
-
         _statusMessage.value = resetMessage
         _taggingState.value = TaggingState.IDLE
         _isLoading.value = false
-        Log.d(TAG, "Proses dibersihkan. Siap untuk item buku berikutnya.")
     }
 
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "BookTaggingViewModel onCleared.")
-        sdkOperationJob?.cancel() // Batalkan job coroutine jika masih berjalan
-
-        // Tidak perlu memanggil sdkManager.releaseResources() di sini jika
-        // SDKManager adalah singleton yang dikelola oleh Application dan
-        // Application yang menangani lifecycle globalnya.
-        // Cukup null-kan callback untuk mencegah memory leak dari ViewModel ini.
+        sdkOperationJob?.cancel()
         sdkManager.onBarcodeScanned = null
         sdkManager.onTagReadTidSuccess = null
         sdkManager.onTagReadTidFailed = null
@@ -620,8 +594,7 @@ class BookTaggingViewModel(
         sdkManager.onTagWriteSuccess = null
         sdkManager.onTagWriteFailed = null
         sdkManager.onError = null
-        sdkManager.onUhfInventoryFinished = null // Meskipun tidak digunakan, baiknya dibersihkan
+        sdkManager.onUhfInventoryFinished = null
         sdkManager.onUhfOperationStopped = null
     }
 }
-

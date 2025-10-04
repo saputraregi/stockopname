@@ -84,4 +84,35 @@
         <item name="android:progressTint">?attr/colorPrimary</item> <!-- Warna progress -->
         <item name="android:progressBackgroundTint">#BDBDBD</item> <!-- Warna latar belakang progress -->
     </style>
+        <!-- ... tema aplikasi Anda ... -->
+
+        <style name="AlertDialogTheme_Light" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+            <!-- Anda bisa override atribut spesifik di sini jika perlu,
+                 misalnya, warna tombol, warna judul, dll.
+                 Namun, hanya dengan parent="Theme.MaterialComponents.DayNight.Dialog.Alert"
+                 atau "Theme.MaterialComponents.Light.Dialog.Alert",
+                 ia seharusnya sudah memberikan chrome dialog yang terang. -->
+
+            <!-- Contoh override warna background dialog secara keseluruhan (termasuk chrome) -->
+            <!-- <item name="android:background">@android:color/white</item> -->
+            <!-- <item name="android:windowBackground">@android:color/white</item> -->
+            <!-- Untuk Material Components, lebih baik override colorSurface -->
+            <item name="colorSurface">@android:color/white</item> <!-- Untuk background dialog Material -->
+            <item name="android:textColorPrimary">@android:color/black</item> <!-- Untuk warna teks judul -->
+            <item name="android:textColorSecondary">@android:color/black</item> <!-- Untuk pesan dialog jika ada -->
+            <item name="buttonBarPositiveButtonStyle">@style/AlertDialog_PositiveButton_Light</item>
+            <item name="buttonBarNegativeButtonStyle">@style/AlertDialog_NegativeButton_Light</item>
+            <item name="buttonBarNeutralButtonStyle">@style/AlertDialog_NeutralButton_Light</item>
+        </style>
+
+        <style name="AlertDialog_PositiveButton_Light" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+            <item name="android:textColor">@android:color/black</item>
+            <!-- Ganti dengan warna yang Anda inginkan untuk tombol di tema dialog terang -->
+        </style>
+        <style name="AlertDialog_NegativeButton_Light" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+            <item name="android:textColor">@android:color/black</item>
+        </style>
+        <style name="AlertDialog_NeutralButton_Light" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+            <item name="android:textColor">@android:color/black</item>
+        </style>
 </resources>

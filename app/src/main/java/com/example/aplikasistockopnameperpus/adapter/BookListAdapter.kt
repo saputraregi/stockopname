@@ -38,8 +38,8 @@ class BookListAdapter(
             // ... di dalam bind() setelah val bookMaster = wrapper.bookMaster
             val statusIconResId = when (bookMaster.opnameStatus) {
                 OpnameStatus.FOUND -> R.drawable.ic_check_circle_green // Buat drawable ini
-                OpnameStatus.MISSING -> R.drawable.ic_error_outline_red // Buat drawable ini
-                OpnameStatus.NEW_ITEM -> R.drawable.ic_add_circle_blue // Buat drawable ini
+                OpnameStatus.MISSING -> R.drawable.ic_missing_red // Buat drawable ini
+                OpnameStatus.NEW_ITEM -> R.drawable.ic_new_item // Buat drawable ini
                 OpnameStatus.NOT_SCANNED -> R.drawable.ic_hourglass_empty_gray // Buat drawable ini
                 // else -> R.drawable.ic_help_outline_gray // Default jika ada status lain
             }

@@ -201,6 +201,12 @@ class BookRepository(
         )
     }
 
+    // Di dalam class BookRepository
+    suspend fun findBookByEpc(epc: String): BookMaster? {
+        return bookMasterDao.getBookByEpc(epc)
+    }
+
+
     // Fungsi baru untuk mendapatkan total buku di master (digunakan di report saving)
     suspend fun getTotalBookCountInMaster(): Int {
         return withContext(Dispatchers.IO) {

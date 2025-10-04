@@ -5,14 +5,21 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 // import androidx.lifecycle.viewModelScope // Tidak digunakan secara langsung di sini
 import com.example.aplikasistockopnameperpus.R
 import com.example.aplikasistockopnameperpus.MyApplication
 import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
+import com.example.aplikasistockopnameperpus.data.repository.BookRepository // Import baru
+import com.example.aplikasistockopnameperpus.util.RealtimeStreamManager // Import baru
+import kotlinx.coroutines.launch // Pastikan import ini ada
 
 class ReadWriteTagViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sdkManager: ChainwaySDKManager = (application as MyApplication).sdkManager
+    private val bookRepository: BookRepository = (application as MyApplication).bookRepository
+    private val realtimeStreamManager: RealtimeStreamManager = (application as MyApplication).realtimeStreamManager
+    private val sentEpcCache = mutableSetOf<String>()
 
     // === LiveData untuk UI ===
     private val _lastReadEpc = MutableLiveData<String?>()
@@ -60,6 +67,7 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
         }
 
         sdkManager.onUhfTagScanned = { epc -> // Untuk inventory kontinu
+            sendItemCodeToPc(epc)
             if (_isReadingContinuous.value == true) {
                 _lastReadEpc.postValue(epc)
                 val currentList = _continuousEpcList.value?.toMutableSet() ?: mutableSetOf()
@@ -71,6 +79,7 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
 
         // Callback dari readSingleUhfTagEpcNearby()
         sdkManager.onSingleUhfTagEpcRead = { epc, tid -> // tid bisa null
+            sendItemCodeToPc(epc)
             _isLoading.postValue(false)
             // Cek apakah ini hasil dari readTargetTagForWrite atau startReading(false)
             if (_targetTagEpc.value == getApplication<Application>().getString(R.string.status_membaca_target)) {
@@ -162,6 +171,24 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    private fun sendItemCodeToPc(epc: String) {
+        if (sentEpcCache.contains(epc)){
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val book = bookRepository.findBookByEpc(epc)
+                book?.let {
+                    realtimeStreamManager.sendData(it.itemCode)
+                    Log.i(TAG, "Mengirim item_code '${it.itemCode}' dari EPC '$epc' ke PC.")
+                    sentEpcCache.add(epc)
+                } ?: Log.w(TAG, "EPC '$epc' tidak ditemukan di DB, tidak ada data dikirim ke PC.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error mencari EPC untuk streaming.", e)
+            }
+        }
+    }
+
     private fun stopAllOperationsAndNotify(errorMessage: String) {
         sdkManager.stopUhfOperation()
         _isReadingContinuous.postValue(false)
@@ -193,10 +220,12 @@ class ReadWriteTagViewModel(application: Application) : AndroidViewModel(applica
         _lockStatus.postValue(Pair(false, null)) // Reset status lock
 
         if (continuous) {
+            sentEpcCache.clear() // Clear cache setiap kali memulai kontinu
             _continuousEpcList.value = emptySet()
             Log.d(TAG, "Starting continuous reading (inventory) via SDK.")
             sdkManager.startUhfInventory()
         } else { // Baca Tunggal EPC
+            sentEpcCache.clear() // Clear cache setiap kali memulai tunggal
             Log.d(TAG, "Starting single EPC read (nearby) via SDK.")
             sdkManager.readSingleUhfTagEpcNearby()
             // Hasil akan ditangani oleh onSingleUhfTagEpcRead / onSingleUhfTagReadFailed

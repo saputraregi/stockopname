@@ -77,7 +77,7 @@
     <string name="read_mode_single">Baca Tunggal</string>
     <string name="read_mode_continuous">Baca Kontinu</string>
     <string name="start_read">Mulai Baca</string>
-    <string name="stop_read">Stop Baca</string>
+    <string name="stop_read">Stop</string>
     <string name="last_epc_label">EPC Terakhir Dibaca:</string>
     <string name="list_of_epcs_label">Daftar EPC Ditemukan (Kontinu):</string>
     <string name="write_instruction">Letakkan satu tag yang akan ditulis di atas reader.</string>
@@ -92,7 +92,7 @@
     <string name="lock_tag_button">Kunci Tag (dengan EPC saat ini)</string>
     <string name="select_lock_type_prompt">Pilih Tipe Kunci...</string>
     <string name="access_password_hint">Password Akses (HEX, 8 char)</string>
-    <string name="clear_list">Bersihkan</string>
+    <string name="clear_list">Clear</string>
     <string name="access_password_helper">Dibutuhkan untuk beberapa operasi kunci/buka kunci</string>
     <string name="error_invalid_hex_format_multiple_of_4">HEX tidak valid (0-9, A-F, kelipatan 4)</string>
     <string name="error_invalid_password_format_8_hex">Password 8 char HEX (0-9, A-F)</string>
@@ -330,8 +330,8 @@
     <string name="no_active_session_to_save">Tidak ada sesi yang dapat disimpan</string>
     <string name="no_scanned_data_to_save">Tidak ada data untuk disimpan</string>
     <string name="save_label">Simpan</string>
-    <string name="baca_tunggal">Baca Tunggal</string>
-    <string name="mulai_baca_kontinu">Mulai Baca Kontinu</string>
+    <string name="baca_tunggal">Read</string>
+    <string name="mulai_baca_kontinu">Read</string>
     <string name="status_membaca">Status: Membaca...</string>
     <string name="status_idle">Status: Idle</string>
     <string name="status_error">Status: Error</string>
@@ -519,7 +519,7 @@
 
         <!-- Tombol Utama dan Aksi -->
         <string name="button_scan">Scan</string>
-        <string name="button_clear">Bersihkan</string>
+        <string name="button_clear">Clear</string>
         <string name="button_default_action">Lanjutkan</string> <!-- Teks default untuk tombol aksi utama -->
         <string name="button_start_tagging_process_untagged">Mulai Proses Tag</string>
         <string name="button_reprocess_tag">Proses Ulang Tag Ini</string>
@@ -650,7 +650,7 @@
     <string name="failed_indicator_toast">Gagal</string>
     <string name="timeout_indicator_toast">Timeout</string>
     <string name="not_found_indicator_toast">tidak ditemukan</string>
-    <string name="button_stop_read">Stop membaca</string>
+    <string name="button_stop_read">Stop</string>
     <string name="status_radar_idle_no_target_set_but_specific_range">No Target</string>
     <string name="status_radar_searching_epc">Searching: %s</string>
     <string name="title_all_books">Semua Buku</string>
@@ -721,4 +721,86 @@
     <string name="content_desc_select_start_date">Select Start Date</string>
     <string name="content_desc_select_end_date">Select End Date</string>
     <string name="apply">Apply</string>
+    <string name="scan_barcode">Scan Barcode</string>
+    <string name="button_reading_initial_epc">Membaca EPC Awal…</string>
+    <string name="button_reading_tid_with_filter">Membaca TID dengan Filter…</string>
+    <string name="label_epc_initial_read">EPC Awal: %s</string>
+    <string name="opname_status_new_item_detected">Item Baru/Tak Terduga Ditemukan</string>
+    <string name="title_activity_book_check">Cek Detail Buku</string>
+    <string name="instruction_book_check">Pindai Barcode atau Tag UHF Buku</string>
+    <string name="button_scan_barcode">Barcode</string>
+    <string name="button_scan_uhf">UHF</string>
+    <string name="status_waiting_for_scan">Menunggu pemindaian...</string>
+    <string name="status_searching_book">Mencari buku...</string>
+    <string name="status_book_found_colon">Buku ditemukan:</string> <!-- Tambahkan titik dua jika perlu -->
+    <string name="status_book_not_found">Buku tidak ditemukan di database.</string>
+    <string name="status_scan_failed">Pemindaian gagal: %s</string>
+    <string name="status_sdk_error">Error SDK: %s</string>
+    <string name="button_clear_check_result">Bersihkan &amp; Scan Lagi</string>
+    <string name="text_not_available_short">N/A</string>
+
+    <string name="label_detail_item_code">Kode Item:</string>
+    <string name="label_detail_author">Penulis:</string>
+    <string name="label_detail_publisher">Penerbit:</string>
+    <string name="label_detail_year">Tahun Terbit:</string>
+    <string name="label_detail_location">Lokasi (DB):</string>
+    <string name="label_detail_rfid_tag">Tag RFID (EPC):</string>
+    <string name="label_detail_tid">TID:</string>
+    <string name="label_detail_pairing_status">Status Pairing:</string>
+    <string name="label_detail_opname_status">Status Opname:</string>
+    <string name="label_detail_last_seen">Terakhir Dilihat:</string>
+    <string name="opname_status_found">Ditemukan</string>
+    <string name="opname_status_new_item_detected_check">Tag Baru/Tak Dikenal</string> <!-- Untuk kasus di BookCheck -->
+    <!-- Untuk lastScanMessage saat buku ditemukan -->
+    <string name="last_scan_found">Ditemukan: %1$s (%2$s) di %3$s</string> <!-- %1: item_code, %2: title, %3: location -->
+    <string name="last_scan_already_found">Sudah ditemukan: %1$s (%2$s)</string> <!-- %1: item_code, %2: title -->
+
+    <!-- Untuk lastScanMessage saat buku TIDAK ditemukan / tag baru -->
+    <string name="last_scan_unknown">Tag/Barcode Baru: %1$s</string> <!-- %1: EPC atau barcode tak dikenal -->
+    <string name="last_scan_unknown_already_logged">Tag/Barcode Baru (lagi): %1$s</string>
+    <string name="last_scan_new_item_added">Tag/Barcode Baru Ditambahkan: %1$s</string> <!-- Pesan jika item baru berhasil ke DB -->
+
+    <!-- String untuk Toast (bisa sama atau berbeda dari lastScanMessage) -->
+    <string name="scan_item_not_in_master_new">Item (%1$s: %2$s) tidak ada di master.</string> <!-- %1: ScanMethod, %2: identifier -->
+    <!-- String lain yang sudah Anda miliki -->
+    <string name="barcode_scan_finished_data_received">Barcode Scan Selesai: Data %1$s</string>
+    <!-- Untuk BookCheckViewModel -->
+    <string name="status_ready_to_scan_book">Siap untuk memindai buku</string>
+    <string name="status_scanning_uhf_for_book">Memindai buku via UHF...</string>
+    <string name="status_scanning_barcode_for_book">Memindai buku via Barcode...</string>
+    <string name="status_scan_stopped_by_user">Pindai dihentikan oleh pengguna</string>
+    <string name="status_scan_stopped_or_finished">Pindai selesai atau dihentikan</string>
+    <string name="status_processing_epc">Memproses EPC: %s</string>
+    <string name="status_processing_barcode">Memproses Barcode: %s</string>
+    <string name="identifier_empty_received">Identifier kosong diterima</string>
+    <string name="status_searching_book_with_id">Mencari buku dengan ID: %s</string>
+    <string name="status_book_found_colon_title">Buku ditemukan: %s</string>
+    <string name="status_book_not_found_with_id">Buku tidak ditemukan (ID: %s)</string>
+    <string name="error_processing_identifier">Gagal memproses identifier: %s</string>
+    <string name="reader_uhf_not_ready">Reader UHF tidak siap</string>
+    <string name="reader_uhf_busy_other_op">Reader UHF sedang digunakan operasi lain</string>
+    <string name="scanner_barcode_not_ready">Scanner barcode tidak siap</string>
+    <string name="scanner_barcode_busy_other_op">Scanner barcode sedang digunakan operasi lain</string>
+
+    <!-- Untuk BookCheckActivity (teks tombol) -->
+    <string name="button_start_uhf_scan_check">Scan UHF Buku</string>
+    <string name="button_stop_uhf_scan_check">Stop UHF</string>
+    <string name="button_start_barcode_scan_check">Scan Barcode Buku</string>
+    <string name="button_stop_barcode_scan_check">Stop Barcode</string>
+     <!-- Contoh untuk UI Cek Buku -->
+    <string name="text_date_format_error">Format tanggal tidak valid</string>
+    <string name="button_stop_scan_book">Stop Scan</string>
+    <string name="button_start_scan_book">Start Scan</string>
+    <string name="status_scanning_uhf_for_book_single">Scanning UHF for Book</string>
+    <string name="scanner_barcode_failed_to_start_exception">Barcode Scanner failed to start: %s</string>
+    <string name="scanner_barcode_not_ready_or_fail_open">Barcode Scanner not ready or failed to open</string>
+    <string name="scanner_barcode_failed_to_start">Barcode Scanner failed to start</string>
+    <string name="content_desc_radar_arrow">Radar Arrow</string>
+    <string name="angle_display_format">Angle: %d</string>
+    <string name="title_activity_read_barcode">Baca Barcode</string>
+    <string name="label_last_scanned_barcode">Hasil Pindai Barcode Terakhir</string>
+    <string name="status_press_trigger_to_scan">Tekan tombol scan untuk memulai</string>
+    <string name="tombol_pindai_barcode">Tombol Pindai Barcode</string>
+    <string name="action_clear_list">Bersihkan Daftar</string>
+    <string name="content_desc_clear_list">Tombol untuk membersihkan daftar hasil pindaian</string>
 </resources>

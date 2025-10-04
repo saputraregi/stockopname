@@ -9,6 +9,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.aplikasistockopnameperpus.MyApplication
 import com.example.aplikasistockopnameperpus.sdk.ChainwaySDKManager
+import com.example.aplikasistockopnameperpus.model.RadarUiTag
 import com.rscja.deviceapi.entity.RadarLocationEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -18,14 +19,14 @@ class RadarViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sdkManager: ChainwaySDKManager = (application as MyApplication).sdkManager
 
-    private val _detectedTags = MutableLiveData<List<RadarLocationEntity>>(emptyList())
-    val detectedTags: LiveData<List<RadarLocationEntity>> = _detectedTags
+    private val _detectedTags = MutableLiveData<List<RadarUiTag>>()
+    val detectedTags: LiveData<List<RadarUiTag>> = _detectedTags
 
     private val _isTracking = MutableLiveData<Boolean>(false)
     val isTracking: LiveData<Boolean> = _isTracking
 
-    private val _readerAngle = MutableLiveData<Int>(0)
-    val readerAngle: LiveData<Int> = _readerAngle
+    //private val _readerAngle = MutableLiveData<Int>(0)
+    //val readerAngle: LiveData<Int> = _readerAngle
 
     private val _toastMessage = MutableLiveData<String?>()
     val toastMessage: LiveData<String?> = _toastMessage
@@ -43,23 +44,27 @@ class RadarViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun setupSdkManagerCallbacks() {
-        sdkManager.onUhfRadarDataUpdated = { tags, angle ->
-            _detectedTags.value = tags
-            _readerAngle.value = angle
+        // Ini adalah tempat yang benar untuk menaruh logika tersebut
+        sdkManager.onUhfRadarDataUpdated = { tags -> // 'tags' sekarang adalah List<RadarUiTag>
+            // Langsung post daftar yang sudah diproses
+            _detectedTags.postValue(tags)
         }
+
+
+        // --- Callback lainnya tetap sama ---
         sdkManager.onUhfRadarError = { message ->
-            _toastMessage.value = message
-            _isTracking.value = false
+            _toastMessage.postValue(message)
+            _isTracking.postValue(false)
             Log.e("RadarViewModel", "SDKManager Radar Error: $message")
         }
         sdkManager.onUhfRadarStarted = {
-            _isTracking.value = true
+            _isTracking.postValue(true)
             Log.d("RadarViewModel", "SDKManager Radar Started callback")
         }
         sdkManager.onUhfRadarStopped = {
-            _isTracking.value = false
-            _detectedTags.value = emptyList()
-            _readerAngle.value = 0
+            _isTracking.postValue(false)
+            _detectedTags.postValue(emptyList()) // Reset dengan daftar kosong
+            // _readerAngle.postValue(0) // Hapus ini
             Log.d("RadarViewModel", "SDKManager Radar Stopped callback")
         }
     }
@@ -103,7 +108,7 @@ class RadarViewModel(application: Application) : AndroidViewModel(application) {
         //}
 
         _detectedTags.value = emptyList()
-        _readerAngle.value = 0
+        //_readerAngle.value = 0
 
         // Jika searchRangeProgress.value == 0 (atau nilai khusus yang menandakan "cari semua"),
         // maka targetEpc bisa null. Jika tidak, targetEpc harus ada.

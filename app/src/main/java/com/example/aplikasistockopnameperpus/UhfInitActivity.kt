@@ -40,9 +40,6 @@ class UhfInitActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_uhf_init)
-
-        // Dapatkan instance sdkManager dari MyApplication
-        // Pastikan MyApplication Anda menyediakan instance ChainwaySDKManager yang sudah dibuat
         sdkManager = (application as MyApplication).sdkManager
 
         textViewReaderStatus = findViewById(R.id.textViewReaderStatus)
@@ -51,30 +48,37 @@ class UhfInitActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupReaderButton()
-        setupSdkManagerCallbacks() // PENTING: Siapkan callback
+        // Pindahkan setupSdkManagerCallbacks() ke onResume()
+        // setupSdkManagerCallbacks() // Hapus dari sini atau biarkan jika Anda juga ingin setup awal
+    }
 
-        // Update UI awal berdasarkan status saat ini dari sdkManager
-        // Ini berguna jika sdkManager sudah terinisialisasi sebelumnya
+    override fun onResume() {
+        super.onResume()
+        Log.d("UhfInitActivity", "onResume: Setting up SDK manager callbacks and updating UI.")
+        setupSdkManagerCallbacks() // PENTING: Set callback setiap kali Activity resume
+        // Update UI berdasarkan status SDK saat ini setiap kali resume
         isUhfReaderActuallyConnected = sdkManager.isDeviceReady("uhf")
     }
 
+    override fun onPause() {
+        super.onPause()
+        Log.d("UhfInitActivity", "onPause: Clearing SDK manager onDeviceStatusChanged callback.")
+        // Penting untuk membersihkan callback untuk menghindari pemanggilan ke Activity yang tidak aktif
+        // dan potensi memory leak.
+        sdkManager.onDeviceStatusChanged = null
+    }
+
     private fun setupSdkManagerCallbacks() {
+        // Hapus pemanggilan berulang jika sudah ada, atau pastikan aman untuk dipanggil berkali-kali
+        // sdkManager.onDeviceStatusChanged = null // Hapus listener lama sebelum set yang baru (jika perlu)
+
         sdkManager.onDeviceStatusChanged = { isConnected, deviceType ->
-            // Pastikan update UI dilakukan di Main thread
             lifecycleScope.launch(Dispatchers.Main) {
                 if (deviceType == "UHF") {
-                    Log.d("UhfInitActivity", "UHF Status Changed: ${if (isConnected) "Connected" else "Disconnected"}")
-                    isUhfReaderActuallyConnected = isConnected
-                    // Toast bisa di-trigger dari sini jika diperlukan, atau cukup updateUI
-                    if (isConnected) {
-                        showToast("Reader UHF berhasil terhubung.")
-                    } else {
-                        // Hanya tampilkan toast jika sebelumnya terhubung dan kemudian terputus
-                        // atau jika upaya koneksi gagal.
-                        // showToast("Koneksi reader UHF terputus atau gagal.") // Ini bisa jadi terlalu sering
-                    }
+                    Log.d("UhfInitActivity", "Callback onDeviceStatusChanged: UHF Status Changed to ${if (isConnected) "Connected" else "Disconnected"}")
+                    isUhfReaderActuallyConnected = isConnected // Ini akan memicu updateUIBasedOnConnectionState()
+                    // Tidak perlu Toast di sini jika updateUI sudah cukup
                 }
-                // Anda bisa menangani status Barcode di sini jika diperlukan oleh UI ini
             }
         }
     }
@@ -85,7 +89,10 @@ class UhfInitActivity : AppCompatActivity() {
             MenuItem("Pair & Write Tag", R.drawable.ic_booktagging, MenuAction.PAIRING_WRITE),
             MenuItem("Stock Opname", R.drawable.ic_stock, MenuAction.STOCK_OPNAME),
             MenuItem("Report", R.drawable.ic_report, MenuAction.REPORT),
+            MenuItem("Cek Detail Buku", R.drawable.ic_book_check, MenuAction.BOOK_CHECK),
+            MenuItem("Stream ke PC", R.drawable.ic_pc, MenuAction.STREAM_TO_PC),
             MenuItem("Read/Write Tag", R.drawable.ic_scan_uhf, MenuAction.READ_WRITE_TAG),
+            MenuItem("Read Barcode", R.drawable.ic_barcode_menu, MenuAction.READ_BARCODE),
             MenuItem("Radar", R.drawable.ic_radar, MenuAction.RADAR),
             MenuItem("Setup", R.drawable.ic_settings, MenuAction.SETUP)
         )
@@ -96,19 +103,26 @@ class UhfInitActivity : AppCompatActivity() {
     }
 
     private fun handleMenuAction(menuAction: MenuAction) {
-        /*if (!isUhfReaderActuallyConnected && (menuAction == MenuAction.STOCK_OPNAME ||
+        if (!isUhfReaderActuallyConnected && (menuAction == MenuAction.STOCK_OPNAME ||
                     menuAction == MenuAction.READ_WRITE_TAG ||
                     menuAction == MenuAction.RADAR ||
-                    menuAction == MenuAction.PAIRING_WRITE)) { // Tambahkan PAIRING_WRITE jika butuh reader
+                    menuAction == MenuAction.PAIRING_WRITE ||
+                    menuAction == MenuAction.SETUP ||
+                    menuAction == MenuAction.BOOK_CHECK ||
+                    menuAction == MenuAction.STREAM_TO_PC ||
+                    menuAction == MenuAction.READ_BARCODE)) {
             showToast("Harap hubungkan reader terlebih dahulu.")
             return
-        }*/
+        }
 
         when (menuAction) {
             MenuAction.IMPORT_EXPORT -> startActivity(Intent(this, ImportExportActivity::class.java))
             MenuAction.STOCK_OPNAME -> startActivity(Intent(this, StockOpnameActivity::class.java))
             MenuAction.REPORT -> startActivity(Intent(this, ReportActivity::class.java))
+            MenuAction.BOOK_CHECK -> startActivity(Intent(this, BookCheckActivity::class.java))
             MenuAction.READ_WRITE_TAG -> startActivity(Intent(this, ReadWriteTagActivity::class.java))
+            MenuAction.READ_BARCODE -> startActivity(Intent(this, ReadBarcodeActivity::class.java))
+            MenuAction.STREAM_TO_PC -> startActivity(Intent(this, StreamToPcActivity::class.java))
             MenuAction.RADAR -> startActivity(Intent(this, RadarActivity::class.java))
             MenuAction.SETUP -> startActivity(Intent(this, SetupActivity::class.java))
             MenuAction.PAIRING_WRITE -> startActivity(Intent(this, BookTaggingActivity::class.java))

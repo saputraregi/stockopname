@@ -46,12 +46,13 @@
             app:layout_constraintHorizontal_weight="1"
             android:layout_marginEnd="8dp">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/editText_epc_target_radar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textCapCharacters"
-            android:maxLines="1" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editText_epc_target_radar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapCharacters"
+                android:maxLines="1"
+                android:textColor="@color/default_text_color" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <Button
@@ -95,7 +96,36 @@
         app:layout_constraintDimensionRatio="1:1"
         tools:background="#E0E0E0"/>
 
-    <androidx.constraintlayout.widget.Guideline
+        <!-- ... setelah <com.example.aplikasistockopnameperpus.view.RadarView ... /> -->
+
+        <ImageView
+            android:id="@+id/imageViewArrow"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_arrow_up"
+            android:contentDescription="@string/content_desc_radar_arrow"
+            android:visibility="invisible"
+            app:layout_constraintTop_toTopOf="@id/radarView"
+            app:layout_constraintBottom_toBottomOf="@id/radarView"
+            app:layout_constraintStart_toStartOf="@id/radarView"
+            app:layout_constraintEnd_toEndOf="@id/radarView"
+            tools:visibility="visible"
+            tools:rotation="45" />
+
+        <TextView
+            android:id="@+id/textViewAngle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="#80000000"
+            android:padding="4dp"
+            android:textColor="@android:color/white"
+            app:layout_constraintTop_toTopOf="@id/radarView"
+            app:layout_constraintStart_toStartOf="@id/radarView"
+            tools:text="Sudut: 45°" />
+
+
+        <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guidelineHorizontalControls"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

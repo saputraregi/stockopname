@@ -17,9 +17,10 @@
             android:layout_height="wrap_content"
             android:text="@string/write_instruction"
             android:textAppearance="?attr/textAppearanceListItem"
-            app:layout_constraintTop_toTopOf="parent"
+            android:textColor="@color/default_text_color"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
         <!-- Bagian Baca Tag Target -->
         <com.google.android.material.textfield.TextInputLayout
@@ -168,16 +169,17 @@
 </com.google.android.material.textfield.TextInputLayout>
 
 <Spinner
-android:id="@+id/spinnerLockType"
-android:layout_width="0dp"
-android:layout_height="wrap_content"
-android:layout_marginTop="16dp"
-android:prompt="@string/select_lock_type_prompt"
-android:entries="@array/lock_types_array"
-app:layout_constraintTop_toBottomOf="@id/textInputLayoutAccessPassword"
-app:layout_constraintStart_toStartOf="parent"
-app:layout_constraintEnd_toEndOf="parent"
-android:minHeight="48dp"/>
+    android:id="@+id/spinnerLockType"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="16dp"
+    android:prompt="@string/select_lock_type_prompt"
+    android:entries="@array/lock_types_array"
+    android:textColor="@color/default_text_color"
+    app:layout_constraintTop_toBottomOf="@id/textInputLayoutAccessPassword"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    android:minHeight="48dp"/>
 
 <Button
 android:id="@+id/buttonLockTag"

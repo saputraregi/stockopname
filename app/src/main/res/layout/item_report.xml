@@ -46,12 +46,14 @@
                 android:layout_height="wrap_content"
                 android:text="Total di Master: "
                 android:textColor="@color/default_text_color" />
+
             <TextView
                 android:id="@+id/textViewReportTotalMaster"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                tools:text="1500"
-                android:textStyle="bold"/>
+                android:textColor="@color/default_text_color"
+                android:textStyle="bold"
+                tools:text="1500" />
         </LinearLayout>
 
         <LinearLayout

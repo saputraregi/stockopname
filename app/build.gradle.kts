@@ -110,5 +110,5 @@ dependencies {
     implementation("androidx.glance:glance-appwidget:1.2.0-alpha01")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:X.Y.Z") // Ganti X.Y.Z dengan versi terbaru
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:X.Y.Z") // Ganti X.Y.Z dengan versi terbaru
-
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

@@ -8,4 +8,7 @@ enum class MenuAction {
     RADAR,
     SETUP,
     PAIRING_WRITE,
+    BOOK_CHECK,
+    STREAM_TO_PC,
+    READ_BARCODE
 }

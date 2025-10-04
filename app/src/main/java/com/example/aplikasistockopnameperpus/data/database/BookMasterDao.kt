@@ -37,7 +37,7 @@ interface BookMasterDao {
     suspend fun getBooksByIdsList(ids: List<Long>): List<BookMaster>
 
     // Fungsi untuk mencari item baru/tak terduga berdasarkan EPC
-    @Query("SELECT * FROM book_master WHERE rfidTagHex = :epc AND isNewOrUnexpected = 1 LIMIT 1")
+    @Query("SELECT * FROM book_master WHERE rfidTagHex = :epc AND isNewOrUnexpected = 1 AND opnameStatus = 'NEW_ITEM' LIMIT 1")
     suspend fun findNewOrUnexpectedByEpc(epc: String): BookMaster?
 
     // Fungsi untuk mencari item baru/tak terduga berdasarkan Item Code
@@ -117,6 +117,9 @@ interface BookMasterDao {
         defaultOpnameStatus: OpnameStatus = OpnameStatus.NOT_SCANNED,
         defaultIsNew: Boolean = false // Parameter ini penting untuk mereset flag isNewOrUnexpected
     )
+
+    @Query("SELECT * FROM book_master WHERE rfidTagHex = :epc LIMIT 1")
+    suspend fun getBookByEpc(epc: String): BookMaster?
 
     @Query("DELETE FROM book_master")
     suspend fun clearAllBooks()

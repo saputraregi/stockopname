@@ -1,330 +1,311 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    tools:context=".BookTaggingActivity">
 
-    <data>
-        <!-- Optional: ViewModel DataBinding -->
-    </data>
+    <!-- Toolbar (opsional, jika Anda menggunakannya) -->
+    <!-- ... Toolbar Anda ... -->
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="16dp"
-        tools:context=".BookTaggingActivity">
+    <!-- Input Kode Item -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/textInputLayoutItemCode"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_item_code_scan_or_type"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/buttonScanBarcode"
+        app:layout_constraintHorizontal_weight="3"
+        android:layout_marginEnd="8dp">
 
-        <!-- Input Kode Item dan Scan Barcode -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cardView_input_item_code"
-            android:layout_width="0dp"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editTextItemCode"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            android:inputType="text"
+            android:maxLines="1"
+            android:textColor="@color/default_text_color" />
+    </com.google.android.material.textfield.TextInputLayout>
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+    <ImageButton
+        android:id="@+id/buttonScanBarcode"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/md_theme_background"
+        android:contentDescription="@string/scan_barcode"
+        android:padding="8dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_barcode_scan"
+        app:layout_constraintBottom_toBottomOf="@+id/textInputLayoutItemCode"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintStart_toEndOf="@+id/textInputLayoutItemCode"
+        app:layout_constraintTop_toTopOf="@+id/textInputLayoutItemCode" />
+
+    <!-- AWAL: NestedScrollView untuk konten utama -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/content_scroll_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@color/md_theme_background"
+        app:layout_constraintBottom_toTopOf="@+id/buttonStartTagging"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textInputLayoutItemCode"> <!-- Constraint ke atas Tombol Aksi Utama -->
+
+        <!-- LinearLayout sebagai child langsung dari NestedScrollView untuk menampung elemen-elemen lain -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Detail Buku -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/layoutBookDetails"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:background="?attr/selectableItemBackground">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/textFieldLayout_item_code"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
+                android:visibility="gone"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp"
+                tools:visibility="visible">
+                <!-- Isi CardView seperti sebelumnya -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Kode Item Buku (Scan atau Ketik)"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toStartOf="@+id/button_scan_barcode"
-                    app:layout_constraintHorizontal_bias="0.5"
-                    app:layout_constraintHorizontal_chainStyle="packed"
-                    android:layout_marginEnd="8dp">
+                    android:background="@color/md_theme_background"
+                    android:orientation="vertical"
+                    android:padding="12dp">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/editText_item_code"
+                    <TextView
+                        android:id="@+id/textViewBookTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="textCapCharacters"
-                        android:maxLines="1" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:textAppearance="?attr/textAppearanceHeadline6"
+                        android:textColor="@color/default_text_color"
+                        tools:text="Judul Buku Sangat Panjang Sekali Agar Layout Terlihat Baik" />
 
-                <Button
-                    android:id="@+id/button_scan_barcode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="0dp"
-                    android:text="Scan"
-                    app:icon="@drawable/ic_barcode_scan"
-                    app:layout_constraintTop_toTopOf="@+id/textFieldLayout_item_code"
-                    app:layout_constraintBottom_toBottomOf="@+id/textFieldLayout_item_code"
-                    app:layout_constraintStart_toEndOf="@+id/textFieldLayout_item_code"
-                    app:layout_constraintEnd_toEndOf="parent" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="horizontal">
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
-        </androidx.cardview.widget.CardView>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_item_code"
+                            android:textColor="@color/default_text_color"
+                            android:textStyle="bold" />
 
-        <!-- Status Proses -->
-        <TextView
-            android:id="@+id/textView_process_status_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Status Proses:"
-            android:textColor="@color/default_text_color"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/cardView_input_item_code" />
+                        <TextView
+                            android:id="@+id/textViewItemCodeValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/default_text_color"
+                            tools:text="KB0012345" />
+                    </LinearLayout>
 
-        <TextView
-            android:id="@+id/textView_process_status"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textAppearance="?attr/textAppearanceBody2"
-            android:textColor="@color/default_text_color"
-            app:layout_constraintBottom_toBottomOf="@+id/textView_process_status_label"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/textView_process_status_label"
-            app:layout_constraintTop_toTopOf="@+id/textView_process_status_label"
-            tools:text="Silakan scan atau masukkan kode item buku." />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="horizontal">
 
-        <!-- Detail Buku (Awalnya GONE) -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/layout_book_details"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp"
-            android:visibility="gone"
-            tools:visibility="visible"
-            app:layout_constraintTop_toBottomOf="@+id/textView_process_status"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_pairing_status"
+                            android:textColor="@color/default_text_color"
+                            android:textStyle="bold" />
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+                        <TextView
+                            android:id="@+id/textViewCurrentRfidStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/default_text_color"
+                            tools:text="PAIRED_WRITE_SUCCESS" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_epc_database"
+                            android:textColor="@color/default_text_color"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textViewCurrentRfidTag"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/default_text_color"
+                            tools:text="1234567890ABCDEF12345678" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/label_tid_database"
+                            android:textColor="@color/default_text_color"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textViewCurrentTid"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/default_text_color"
+                            tools:text="E28011700000020C9F2B172D" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Info Tag yang Discan / Akan Ditulis -->
+            <LinearLayout
+                android:id="@+id/layoutScannedTagInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp">
-
+                android:layout_marginTop="12dp"
+                android:background="@color/md_theme_background"
+                android:orientation="vertical"
+                android:padding="8dp">
+                <!-- Isi LinearLayout seperti sebelumnya -->
                 <TextView
-                    android:id="@+id/textView_item_code_label"
+                    android:id="@+id/textViewScannedEpcLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Kode Item:"
+                    android:text="@string/label_epc_scanned_on_tag"
                     android:textColor="@color/default_text_color"
                     android:textStyle="bold"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    android:visibility="gone"
+                    tools:visibility="visible" />
 
                 <TextView
-                    android:id="@+id/textView_item_code_value"
-                    android:layout_width="0dp"
+                    android:id="@+id/textViewScannedEpcValue"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
+                    android:layout_marginBottom="4dp"
+                    android:fontFamily="monospace"
                     android:textColor="@color/default_text_color"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/textView_item_code_label"
-                    app:layout_constraintTop_toTopOf="@+id/textView_item_code_label"
-                    tools:text="B00001XYZ" />
+                    android:visibility="gone"
+                    tools:text="AABBCCDDEEFF001122334455"
+                    tools:visibility="visible" />
 
                 <TextView
-                    android:id="@+id/textView_book_title_label"
+                    android:id="@+id/textViewScannedTidLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Judul Buku:"
+                    android:text="@string/label_tid_scanned_on_tag"
                     android:textColor="@color/default_text_color"
                     android:textStyle="bold"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_item_code_value" />
+                    android:visibility="gone"
+                    tools:visibility="visible" />
 
                 <TextView
-                    android:id="@+id/textView_book_title"
-                    android:layout_width="0dp"
+                    android:id="@+id/textViewScannedTidValue"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
+                    android:fontFamily="monospace"
                     android:textColor="@color/default_text_color"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/textView_book_title_label"
-                    app:layout_constraintTop_toTopOf="@+id/textView_book_title_label"
-                    tools:text="Belajar Android Jetpack Compose Modern" />
+                    android:visibility="gone"
+                    tools:text="E200341201301780080C0D40"
+                    tools:visibility="visible" />
+            </LinearLayout>
 
-                <TextView
-                    android:id="@+id/textView_current_rfid_status_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Status Pairing:"
-                    android:textColor="@color/default_text_color"
-                    android:textStyle="bold"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_book_title" />
-
-                <TextView
-                    android:id="@+id/textView_current_rfid_status"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:textColor="@color/default_text_color"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/textView_current_rfid_status_label"
-                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_status_label"
-                    tools:text="BELUM DITAG" />
-
-                <TextView
-                    android:id="@+id/textView_current_rfid_tag_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="EPC (Database):"
-                    android:textColor="@color/default_text_color"
-                    android:textStyle="bold"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_status" />
-
-                <TextView
-                    android:id="@+id/textView_current_rfid_tag"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:textColor="@color/default_text_color"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/textView_current_rfid_tag_label"
-                    app:layout_constraintTop_toTopOf="@+id/textView_current_rfid_tag_label"
-                    tools:text="423030303033000000000000" />
-
-                <TextView
-                    android:id="@+id/textView_current_tid_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="TID (Database):"
-                    android:textColor="@color/default_text_color"
-                    android:textStyle="bold"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/textView_current_rfid_tag" />
-
-                <TextView
-                    android:id="@+id/textView_current_tid"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:textColor="@color/default_text_color"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/textView_current_tid_label"
-                    app:layout_constraintTop_toTopOf="@+id/textView_current_tid_label"
-                    tools:text="E28011700000020B1A76269C" />
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Informasi Tag yang Terbaca Selama Proses -->
-        <TextView
-            android:id="@+id/textView_scanned_tid_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="TID Terbaca (Tag):"
-            android:textColor="@color/default_text_color"
-            android:textStyle="bold"
-            android:visibility="gone"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/layout_book_details"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/textView_scanned_tid_value"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textColor="@color/default_text_color"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@+id/textView_scanned_tid_label"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/textView_scanned_tid_label"
-            app:layout_constraintTop_toTopOf="@+id/textView_scanned_tid_label"
-            tools:text="E200341201300000000000AA"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/textView_scanned_epc_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="EPC Terbaca (Tag):"
-            android:textColor="@color/default_text_color"
-            android:textStyle="bold"
-            android:visibility="gone"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/textView_scanned_tid_value"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/textView_scanned_epc_value"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textColor="@color/default_text_color"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@+id/textView_scanned_epc_label"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/textView_scanned_epc_label"
-            app:layout_constraintTop_toTopOf="@+id/textView_scanned_epc_label"
-            tools:text="4A4A4A4A4A4A4A4A4A4A4A4A"
-            tools:visibility="visible" />
-
-        <!-- Progress Bar (Awalnya GONE) -->
-        <ProgressBar
-            android:id="@+id/progressBar_tagging"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:indeterminate="true"
-            android:visibility="gone"
-            tools:visibility="visible"
-            android:layout_marginTop="16dp"
-            app:layout_constraintTop_toBottomOf="@+id/textView_scanned_epc_value"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
-
-        <!-- Tombol Aksi -->
-        <LinearLayout
-            android:id="@+id/layout_action_buttons"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="24dp"
-            app:layout_constraintTop_toBottomOf="@+id/progressBar_tagging"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintVertical_bias="1.0"> <!-- Mendorong ke bawah -->
-
-            <Button
-                android:id="@+id/button_clear"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="0dp"
+            <!-- Status Proses -->
+            <TextView
+                android:id="@+id/textViewProcessStatus"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Bersihkan"
-                android:layout_marginEnd="8dp"/>
+                android:layout_marginTop="12dp"
+                android:gravity="center_horizontal"
+                android:textAppearance="?attr/textAppearanceBody2"
+                android:textColor="@color/default_text_color"
+                tools:text="Status: Silakan scan barcode buku atau dekatkan tag RFID." />
 
-            <!-- Tombol Aksi Utama yang Teks dan Fungsinya Berubah -->
-            <Button
-                android:id="@+id/button_start_tagging"
-                android:layout_width="0dp"
+            <!-- ProgressBar -->
+            <ProgressBar
+                android:id="@+id/progressBarTagging"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="2"
-                tools:text="Mulai Baca TID"
-                android:text="Aksi Berikutnya"
+                android:layout_marginTop="8dp"
+                android:indeterminate="true"
                 android:visibility="gone"
-                tools:visibility="visible"
-                android:enabled="false"/> <!-- Awalnya disabled, diatur oleh Activity -->
+                tools:visibility="visible" />
 
         </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+    <!-- AKHIR: NestedScrollView -->
+
+
+    <!-- Tombol Aksi Utama -->
+<Button
+android:id="@+id/buttonStartTagging"
+style="@style/Widget.MaterialComponents.Button.Icon"
+android:layout_width="0dp"
+android:layout_height="wrap_content"
+android:layout_marginBottom="8dp"
+android:visibility="gone"
+app:icon="@drawable/ic_tag"
+app:layout_constraintBottom_toTopOf="@+id/linearLayoutBottomButtons"
+app:layout_constraintEnd_toEndOf="parent"
+app:layout_constraintStart_toStartOf="parent"
+tools:text="@string/button_start_tagging_process_untagged"
+tools:visibility="visible" />
+
+    <!-- Grup Tombol Bawah (Clear & Cancel) -->
+<LinearLayout
+    android:id="@+id/linearLayoutBottomButtons"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent">
+
+<Button
+    android:id="@+id/buttonClear"
+    style="?attr/materialButtonOutlinedStyle"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:text="@string/button_clear"
+    android:layout_marginEnd="4dp"/>
+
+<Button
+    android:id="@+id/buttonCancel"
+    style="@style/Widget.MaterialComponents.Button.TextButton"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:text="@string/action_cancel"
+    android:layout_marginStart="4dp"
+    android:visibility="visible"
+    android:enabled="false"/> <!-- Awalnya nonaktif, diaktifkan saat loading -->
+</LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-</layout>
